@@ -36,21 +36,29 @@
 
 
 
-  <!-- Hộp ủng hộ tùy chọn, chỉ hiển thị một lần trên mỗi trình duyệt -->
+  <!-- Hộp ủng hộ: hiện ở MỖI lần vào web -->
   <div class="support-overlay" id="supportOverlay" hidden>
-    <section class="support-dialog" role="dialog" aria-modal="true" aria-labelledby="supportTitle">
-      <button class="support-close" id="supportClose" type="button" aria-label="Đóng">×</button>
+    <section class="support-dialog" role="dialog" aria-modal="true" aria-labelledby="supportTitle" aria-describedby="supportDesc">
+      <button class="support-close" id="supportClose" type="button" aria-label="Đóng và tiếp tục học">×</button>
       <div class="support-kicker">LỜI NHẮN NHỎ</div>
       <h2 id="supportTitle">Bạn thấy website hữu ích?</h2>
-      <p>Nếu website giúp ích cho việc học của bạn, bạn có thể ủng hộ mình một ly cà phê. Đây hoàn toàn là tùy chọn — bạn vẫn có thể sử dụng website miễn phí như bình thường.</p>
+      <p id="supportDesc">Nếu web giúp bạn ôn thi nhẹ hơn, bạn có thể mời mình một ly cà phê. Hoàn toàn tùy chọn — mọi tính năng vẫn miễn phí.</p>
+      <figure class="support-qr">
+        <img id="supportQr" src="qr-mb.png" width="760" height="1023"
+             alt="Mã VietQR MB Bank — chủ tài khoản HOANG HAI NAM — số tài khoản 400172008">
+        <figcaption>Quét bằng app ngân hàng bất kỳ</figcaption>
+      </figure>
       <div class="support-bank">
-        <span>MB Bank · Số tài khoản</span>
-        <strong id="supportAccount">400172008</strong>
-        <button class="btn primary" id="supportCopy" type="button">Sao chép số tài khoản</button>
-        <span class="support-copy-status" id="supportCopyStatus" aria-live="polite"></span>
+        <span class="support-bank-name">MB Bank</span>
+        <strong class="support-account" id="supportAccount">400172008</strong>
+        <span class="support-holder">HOANG HAI NAM</span>
       </div>
-      <button class="btn ghost support-later" id="supportLater" type="button">Để mình học tiếp đã</button>
-      <p class="support-note">Cảm ơn bạn đã ghé thăm và học tập cùng website 💚</p>
+      <div class="support-actions">
+        <button class="btn primary" id="supportCopy" type="button">Sao chép số tài khoản</button>
+        <button class="btn ghost" id="supportLater" type="button">Để mình học tiếp đã</button>
+      </div>
+      <p class="support-copy-status" id="supportCopyStatus" aria-live="polite"></p>
+      <p class="support-note">Cảm ơn bạn đã ghé thăm và học cùng website 💚</p>
     </section>
   </div>
 
@@ -63,39 +71,81 @@
     (function () {
       var overlay = document.getElementById('supportOverlay');
       if (!overlay) return;
-      var dismissedKey = 'mln-support-note-dismissed-v1';
+      var dialog = overlay.querySelector('.support-dialog');
+      var closeBtn = document.getElementById('supportClose');
+      var laterBtn = document.getElementById('supportLater');
+      var copyBtn = document.getElementById('supportCopy');
+      var status = document.getElementById('supportCopyStatus');
+      var qr = document.getElementById('supportQr');
+      var ACCOUNT = '400172008';
+      var lastFocus = null;
+
+      /* Ảnh QR thiếu/hỏng thì ẩn khối ảnh, phần số tài khoản bên dưới vẫn dùng được */
+      if (qr) {
+        qr.addEventListener('error', function () {
+          var fig = qr.closest ? qr.closest('.support-qr') : null;
+          if (fig) fig.hidden = true;
+        });
+      }
+
+      function openSupport() {
+        if (!overlay.hidden) return;
+        lastFocus = document.activeElement;
+        overlay.hidden = false;
+        document.documentElement.classList.add('support-open');
+        if (laterBtn) { try { laterBtn.focus({ preventScroll: true }); } catch (e) { laterBtn.focus(); } }
+      }
+
       function closeSupport() {
+        if (overlay.hidden) return;
         overlay.hidden = true;
-        try { localStorage.setItem(dismissedKey, '1'); } catch (e) {}
+        document.documentElement.classList.remove('support-open');
+        if (lastFocus && typeof lastFocus.focus === 'function') {
+          try { lastFocus.focus({ preventScroll: true }); } catch (e) { lastFocus.focus(); }
+        }
       }
-      document.getElementById('supportClose').addEventListener('click', closeSupport);
-      document.getElementById('supportLater').addEventListener('click', closeSupport);
-      overlay.addEventListener('click', function (e) {
-        if (e.target === overlay) closeSupport();
-      });
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !overlay.hidden) closeSupport();
-      });
-      document.getElementById('supportCopy').addEventListener('click', function () {
-        var account = '400172008';
-        var status = document.getElementById('supportCopyStatus');
+
+      function copyAccount() {
+        var done = function () { status.textContent = 'Đã sao chép số tài khoản.'; };
+        var fail = function () { status.textContent = 'Bạn hãy sao chép thủ công: ' + ACCOUNT; };
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(account).then(function () {
-            status.textContent = 'Đã sao chép số tài khoản.';
-          }).catch(function () {
-            status.textContent = 'Bạn hãy sao chép thủ công: 400172008';
-          });
-        } else {
-          status.textContent = 'Bạn hãy sao chép thủ công: 400172008';
+          navigator.clipboard.writeText(ACCOUNT).then(done, fail);
+          return;
         }
-      });
-      try {
-        if (!localStorage.getItem(dismissedKey)) {
-          window.setTimeout(function () { overlay.hidden = false; }, 700);
-        }
-      } catch (e) {
-        window.setTimeout(function () { overlay.hidden = false; }, 700);
+        /* Trình duyệt cũ / không phải HTTPS: dùng textarea tạm */
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = ACCOUNT;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          var ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          if (ok) { done(); } else { fail(); }
+        } catch (e) { fail(); }
       }
+
+      closeBtn.addEventListener('click', closeSupport);
+      laterBtn.addEventListener('click', closeSupport);
+      copyBtn.addEventListener('click', copyAccount);
+      overlay.addEventListener('click', function (e) { if (e.target === overlay) closeSupport(); });
+
+      /* Escape để đóng, Tab bị giữ trong hộp thoại */
+      document.addEventListener('keydown', function (e) {
+        if (overlay.hidden) return;
+        if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); closeSupport(); return; }
+        if (e.key !== 'Tab' || !dialog) return;
+        var f = dialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (!f.length) return;
+        var first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      });
+
+      /* Hiện ở mỗi lần vào web — không ghi nhớ trạng thái đã đóng */
+      window.setTimeout(openSupport, 600);
     })();
   </script>
 

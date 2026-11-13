@@ -1,0 +1,21 @@
+=== index.html ===
+Số script inline: 1
+  script #1: cú pháp OK (3487 ký tự)
+Số id: 19, không trùng
+id được script tham chiếu: supportOverlay, supportClose, supportLater, supportCopy, supportCopyStatus, supportQr (đủ)
+Thẻ trong khối popup: 18 (kiểm tra thủ công bên dưới)
+Asset HTML tham chiếu: manifest.webmanifest, icon.svg, style.css, qr-mb.png, questions.js, theory.js, explain.js, app.js (đủ tất cả)
+
+=== style.css ===
+Ngoặc nhọn: 195 mở / 195 đóng
+Đủ selector mới: true
+
+=== sw.js ===
+  cú pháp OK
+  CACHE = mln-gameshow-v8
+  File trong cache: ./, index.html, style.css, app.js, questions.js, theory.js, explain.js, manifest.webmanifest, icon.svg, qr-mb.png, sw.js (đủ)
+
+=== qr-mb.png ===
+  123 KB, 760x1023, PNG=true
+
+✅ Tất cả kiểm tra tĩnh đều đạt.

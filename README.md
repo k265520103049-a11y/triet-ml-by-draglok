@@ -18,6 +18,7 @@ Web ôn trắc nghiệm tĩnh (HTML + CSS + JavaScript thuần), không cần c�
 - **Cài như app, dùng khi mất mạng (PWA)**: mở trang trên điện thoại → menu trình duyệt → "Thêm vào màn hình chính". Cần các file `sw.js`, `manifest.webmanifest`, `icon*`. Khi có mạng, web luôn tải bản mới nhất.
 - **Giải thích đáp án**: điền vào `explain.js` theo mẫu `"c2-15": "..."`; câu nào có giải thích sẽ hiện sau khi trả lời.
 - **Ôn câu sai**: tự gom các câu từng làm sai (lưu trong trình duyệt).
+- **Hộp ủng hộ**: hiện ở mỗi lần vào web, kèm mã VietQR MB Bank (`qr-mb.png`) và nút sao chép số tài khoản; đóng bằng nút, phím `Esc` hoặc bấm ra ngoài.
 - **Tra cứu**: tìm câu hỏi theo từ khoá (không cần gõ dấu), xem đáp án đúng.
 - Phím tắt: `1-4` hoặc `A-D` chọn đáp án, `Enter` câu tiếp, `R` làm lại từ đầu.
 - Giao diện sáng/tối, dùng tốt trên điện thoại.
@@ -25,10 +26,14 @@ Web ôn trắc nghiệm tĩnh (HTML + CSS + JavaScript thuần), không cần c�
 ## Cấu trúc file
 | File | Vai trò |
 |---|---|
-| `index.html` | Khung trang |
+| `index.html` | Khung trang + hộp ủng hộ |
 | `style.css` | Giao diện |
 | `app.js` | Logic: chọn chương, xáo câu, chấm điểm, lưu tiến độ |
 | `questions.js` | Dữ liệu 600 câu hỏi và đáp án |
+| `theory.js` | Nội dung ôn lý thuyết (19 chủ đề) |
+| `explain.js` | Giải thích đáp án (tuỳ chọn, đang trống) |
+| `qr-mb.png` | Ảnh mã VietQR MB Bank hiện trong hộp ủng hộ |
+| `sw.js` + `manifest.webmanifest` + `icon.svg` | PWA: cài như app, dùng offline |
 
 Mỗi câu trong `questions.js` có dạng:
 ```js
