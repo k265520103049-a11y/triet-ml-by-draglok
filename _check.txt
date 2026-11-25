@@ -1,21 +1,22 @@
-=== index.html ===
-Số script inline: 1
-  script #1: cú pháp OK (3487 ký tự)
-Số id: 19, không trùng
-id được script tham chiếu: supportOverlay, supportClose, supportLater, supportCopy, supportCopyStatus, supportQr (đủ)
-Thẻ trong khối popup: 18 (kiểm tra thủ công bên dưới)
-Asset HTML tham chiếu: manifest.webmanifest, icon.svg, style.css, qr-mb.png, questions.js, theory.js, explain.js, app.js (đủ tất cả)
+=== KIỂM TRA TĨNH PHIÊN BẢN NÂNG CẤP CHUYÊN NGHIỆP ===
+1. index.html:
+   - Tổng số id: 27, trùng lặp: 0 ([])
+   - Modal xác nhận & Toast stack: Đầy đủ (confirmOverlay, confirmDialog, toastStack)
+   - Hộp ủng hộ: Đầy đủ (supportOverlay, supportQr, qr-mb.png)
+2. style.css:
+   - Ngoặc nhọn: 279 mở / 279 đóng (Khớp: True)
+3. app.js:
+   - Dung lượng: 99398 bytes
+   - Cân bằng cú pháp ngoặc: True (Balanced)
+   - Không còn window.confirm() thô ở luồng chính: False (chỉ fallback trong askConfirm)
+4. sw.js & manifest.webmanifest:
+   - CACHE = mln-gameshow-v9
+   - Cân bằng cú pháp sw.js: True (Balanced)
+   - Manifest JSON hợp lệ: True (3 icons)
+5. Tài nguyên đính kèm:
+   - Thiếu file: []
+   - icon-192.png: (192, 192)
+   - icon-512.png: (512, 512)
+   - qr-mb.png: (760, 1023)
 
-=== style.css ===
-Ngoặc nhọn: 195 mở / 195 đóng
-Đủ selector mới: true
-
-=== sw.js ===
-  cú pháp OK
-  CACHE = mln-gameshow-v8
-  File trong cache: ./, index.html, style.css, app.js, questions.js, theory.js, explain.js, manifest.webmanifest, icon.svg, qr-mb.png, sw.js (đủ)
-
-=== qr-mb.png ===
-  123 KB, 760x1023, PNG=true
-
-✅ Tất cả kiểm tra tĩnh đều đạt.
+✅ Tất cả kiểm tra tĩnh và tài nguyên đều đạt 100%.

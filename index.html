@@ -4,24 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ôn tập Triết học Mác - Lênin</title>
-  <meta name="description" content="Ôn trắc nghiệm Triết học Mác - Lênin (BAS 123) - ngân hàng 600 câu theo chương và ôn tổng hợp.">
+  <meta name="description" content="Ôn trắc nghiệm Triết học Mác - Lênin (BAS 123) - ngân hàng 600 câu theo chương, lý thuyết trọng tâm, thống kê tiến độ và đấu trường gameshow.">
   <meta name="theme-color" content="#b3261e">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="#" id="brand">☭ Ôn Triết Mác - Lênin</a>
-    <nav class="nav">
-      <button class="btn ghost" id="navHome">Trang chủ</button>
-      <button class="btn ghost" id="navBrowse">Tra cứu</button>
-      <button class="btn ghost" id="navTheory">Ôn lý thuyết</button>
-      <button class="btn ghost" id="navGame">Gameshow</button>
-      <button class="btn ghost" id="navStats">Thống kê</button>
-      <button class="btn ghost" id="navWrong">Câu sai <span class="badge" id="wrongCount">0</span></button>
-      <button class="btn ghost icon" id="navSettings" title="Cài đặt" aria-label="Cài đặt">⚙</button>
+    <nav class="nav" aria-label="Điều hướng chính">
+      <button class="btn ghost active" id="navHome" type="button" aria-current="page">Trang chủ</button>
+      <button class="btn ghost" id="navBrowse" type="button">Tra cứu</button>
+      <button class="btn ghost" id="navTheory" type="button">Ôn lý thuyết</button>
+      <button class="btn ghost" id="navGame" type="button">Gameshow</button>
+      <button class="btn ghost" id="navStats" type="button">Thống kê</button>
+      <button class="btn ghost" id="navWrong" type="button">Câu sai <span class="badge" id="wrongCount">0</span></button>
+      <button class="btn ghost icon" id="navSettings" type="button" title="Cài đặt &amp; Sao lưu" aria-label="Cài đặt">⚙</button>
     </nav>
   </header>
 
@@ -31,10 +31,24 @@
 
   <footer class="footer">
     Ngân hàng câu hỏi: học phần Triết học Mác - Lênin (BAS 123), 600 câu.
-    Đáp án do người làm web tự lập, hãy đối chiếu với giáo trình khi nghi ngờ.
+    Đáp án do người làm web tự lập, hãy đối chiếu với giáo trình khi cần xác minh.
   </footer>
 
+  <!-- Toast thông báo xếp chồng -->
+  <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="false"></div>
 
+  <!-- Hộp thoại xác nhận chuẩn giao diện -->
+  <div class="confirm-overlay" id="confirmOverlay" hidden>
+    <section class="confirm-dialog" id="confirmDialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmDesc">
+      <div class="confirm-icon" id="confirmIcon" aria-hidden="true">⚠️</div>
+      <h3 class="confirm-title" id="confirmTitle">Xác nhận thao tác</h3>
+      <p class="confirm-desc" id="confirmDesc">Bạn có chắc chắn muốn tiếp tục không?</p>
+      <div class="confirm-actions">
+        <button class="btn" id="confirmCancel" type="button">Huỷ bỏ</button>
+        <button class="btn primary" id="confirmOk" type="button">Xác nhận</button>
+      </div>
+    </section>
+  </div>
 
   <!-- Hộp ủng hộ: hiện ở MỖI lần vào web -->
   <div class="support-overlay" id="supportOverlay" hidden>
@@ -80,7 +94,6 @@
       var ACCOUNT = '400172008';
       var lastFocus = null;
 
-      /* Ảnh QR thiếu/hỏng thì ẩn khối ảnh, phần số tài khoản bên dưới vẫn dùng được */
       if (qr) {
         qr.addEventListener('error', function () {
           var fig = qr.closest ? qr.closest('.support-qr') : null;
@@ -112,7 +125,6 @@
           navigator.clipboard.writeText(ACCOUNT).then(done, fail);
           return;
         }
-        /* Trình duyệt cũ / không phải HTTPS: dùng textarea tạm */
         try {
           var ta = document.createElement('textarea');
           ta.value = ACCOUNT;
@@ -132,7 +144,6 @@
       copyBtn.addEventListener('click', copyAccount);
       overlay.addEventListener('click', function (e) { if (e.target === overlay) closeSupport(); });
 
-      /* Escape để đóng, Tab bị giữ trong hộp thoại */
       document.addEventListener('keydown', function (e) {
         if (overlay.hidden) return;
         if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); closeSupport(); return; }
@@ -144,10 +155,8 @@
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
       });
 
-      /* Hiện ở mỗi lần vào web — không ghi nhớ trạng thái đã đóng */
       window.setTimeout(openSupport, 600);
     })();
   </script>
-
 </body>
 </html>
