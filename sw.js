@@ -1,5 +1,5 @@
 /* Service worker: ưu tiên mạng (luôn lấy bản mới nhất), mất mạng thì dùng bản đã lưu. */
-var CACHE = 'mln-gameshow-v9';
+var CACHE = 'mln-gameshow-v10';
 var FILES = [
   './',
   'index.html',
@@ -9,7 +9,7 @@ var FILES = [
   'theory.js',
   'explain.js',
   'manifest.webmanifest',
-  'icon.svg',
+  'logo.png',
   'icon-192.png',
   'icon-512.png',
   'qr-mb.png',

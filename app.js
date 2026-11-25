@@ -1,12 +1,17 @@
-/* Ôn tập Triết học Mác - Lênin (BAS 123) - Pro Edition v2
- * Đầy đủ: Luyện tập, Đề 40 câu, 4 Gameshow thưởng Xu Triết, EXP & Level,
- * Nhiệm vụ ngày, Cửa hàng Background/Khung thẻ/Vật phẩm & Trình quản lý câu hỏi.
+/* Ôn tập Triết học Mác - Lênin (BAS 123) — Pro Edition v2
+ * Đầy đủ: Luyện tập, Đề 40 câu, Lý thuyết, Tra cứu, 4 Gameshow, Xu Triết, EXP/Level,
+ * Nhiệm vụ ngày, Cửa hàng Background/Vật phẩm, Hướng dẫn & Quản lý Thêm/Xóa câu hỏi.
  */
 (function () {
   'use strict';
 
-  var BASE_Q = (window.QUESTIONS || []).slice();
+  var RAW_QUESTIONS = Array.isArray(window.QUESTIONS) ? window.QUESTIONS.slice() : [];
+  var BASE_EXPLAIN = Object.assign({}, window.EXPLAIN || {});
   var Q = [];
+  var EXPLAIN = {};
+  var byId = {};
+  var normCache = null;
+
   var LETTERS = ['A', 'B', 'C', 'D'];
   var MIX_SIZE = 40;
   var STORE_KEY = 'mln-ontap-v1';
@@ -40,67 +45,50 @@
     }
   };
 
-  /* ---------- Danh mục Cửa hàng Xu Triết ---------- */
-  var SHOP_BACKGROUNDS = [
-    { id: 'default', name: 'Mặc định thanh lịch', desc: 'Nền tiêu chuẩn sáng/tối dịu mắt.', price: 0, icon: '🏛️', preview: 'linear-gradient(135deg,#f5f7fb,#e2e8f0)' },
-    { id: 'sunrise', name: 'Bình minh Cách mạng', desc: 'Sắc đỏ cam ấm áp đầy khí thế.', price: 150, icon: '🌅', preview: 'linear-gradient(135deg,#fee2e2,#fef3c7)' },
-    { id: 'emerald', name: 'Thảo nguyên Biện chứng', desc: 'Tông xanh ngọc bích nhẹ nhàng, tập trung cao.', price: 220, icon: '🌿', preview: 'linear-gradient(135deg,#d1fae5,#ecfdf5)' },
-    { id: 'sakura', name: 'Hoa anh đào Mùa xuân', desc: 'Ánh hồng phấn tinh tế và thư thái.', price: 280, icon: '🌸', preview: 'linear-gradient(135deg,#fce7f3,#ffe4e6)' },
-    { id: 'cosmos', name: 'Vũ trụ Vật chất', desc: 'Tinh vân đa sắc biểu tượng cho thế giới khách quan.', price: 360, icon: '🌌', preview: 'linear-gradient(135deg,#e0e7ff,#fae8ff)' },
-    { id: 'royal', name: 'Hào quang Hoàng kim', desc: 'Ánh vàng kim sang trọng dành cho học giả.', price: 450, icon: '👑', preview: 'linear-gradient(135deg,#fef3c7,#fde68a)' },
-    { id: 'cyber', name: 'Lưới Cyber Duy vật', desc: 'Lưới tọa độ chuyển động hiện đại.', price: 550, icon: '💠', preview: 'linear-gradient(135deg,#dbeafe,#ede9fe)' }
+  /* ---------- Dữ liệu Cửa hàng & Nhiệm vụ ngày ---------- */
+  var SHOP_CATALOG = {
+    bg: [
+      { id: 'default', name: 'Mặc định Thanh lịch', price: 0, preview: 'bg-default', desc: 'Nền tiêu chuẩn tối giản, dịu mắt khi ôn bài lâu.' },
+      { id: 'sunrise', name: 'Bình minh Cách mạng', price: 120, preview: 'bg-sunrise', desc: 'Ánh đỏ cam ấm áp đầy nhiệt huyết lý luận.' },
+      { id: 'emerald', name: 'Thảo nguyên Biện chứng', price: 150, preview: 'bg-emerald', desc: 'Sắc xanh ngọc lục bảo thư giãn, tập trung cao.' },
+      { id: 'sakura', name: 'Hoa anh đào Mùa xuân', price: 180, preview: 'bg-sakura', desc: 'Tông hồng phấn nhẹ nhàng, tươi mới.' },
+      { id: 'cosmos', name: 'Vũ trụ Duy vật', price: 250, preview: 'bg-cosmos', desc: 'Dải ngân hà tím lam huyền ảo chiều sâu.' },
+      { id: 'cyber', name: 'Lưới Tri thức Số', price: 320, preview: 'bg-cyber', desc: 'Lưới tọa độ chuyển động hiện đại phong cách công nghệ.' },
+      { id: 'royal', name: 'Hào quang Vàng son', price: 400, preview: 'bg-royal', desc: 'Ánh kim sang trọng dành cho cao thủ Triết học.' }
+    ],
+    palette: [
+      { id: 'default', name: 'Đỏ Cờ Truyền thống', price: 0, preview: 'pal-default', desc: 'Tông đỏ đặc trưng của bộ môn Triết học Mác - Lênin.' },
+      { id: 'blue', name: 'Xanh Hàn lâm', price: 140, preview: 'pal-blue', desc: 'Tông xanh dương chuẩn mực, sắc nét.' },
+      { id: 'violet', name: 'Tím Triết gia', price: 160, preview: 'pal-violet', desc: 'Tông tím tư duy sâu sắc, hiện đại.' },
+      { id: 'emerald', name: 'Xanh Lục bảo', price: 160, preview: 'pal-emerald', desc: 'Tông xanh lá cân bằng, dễ chịu.' }
+    ],
+    frame: [
+      { id: 'default', name: 'Khung Chuẩn', price: 0, preview: 'frm-default', desc: 'Viền thẻ câu hỏi gọn gàng tiêu chuẩn.' },
+      { id: 'gold', name: 'Khung Viền Vàng Gold', price: 200, preview: 'frm-gold', desc: 'Viền vàng ánh kim nổi bật quanh thẻ câu hỏi.' },
+      { id: 'neon', name: 'Khung Phát Sáng Neon', price: 240, preview: 'frm-neon', desc: 'Hào quang phát sáng theo màu chủ đạo.' },
+      { id: 'crimson', name: 'Khung Đỏ Hoàng Kim', price: 300, preview: 'frm-crimson', desc: 'Viền đỏ kết hợp đỉnh vàng quyền uy.' }
+    ],
+    title: [
+      { id: 'Tập sự Tư duy', name: 'Tập sự Tư duy', price: 0, desc: 'Danh hiệu khởi đầu trên hành trình khám phá Triết học.' },
+      { id: 'Nhà Duy vật Biện chứng', name: 'Nhà Duy vật Biện chứng', price: 120, desc: 'Nắm vững mối quan hệ giữa vật chất và ý thức.' },
+      { id: 'Chiến sĩ Lý luận', name: 'Chiến sĩ Lý luận', price: 200, desc: 'Bản lĩnh vững vàng qua hàng trăm câu hỏi hóc búa.' },
+      { id: 'Bậc thầy Phép Biện chứng', name: 'Bậc thầy Phép Biện chứng', price: 350, desc: 'Thông thạo 2 nguyên lý, 6 cặp phạm trù và 3 quy luật.' },
+      { id: 'Hiền triết Mác - Lênin', name: 'Hiền triết Mác - Lênin', price: 500, desc: 'Đỉnh cao tri thức học phần BAS 123.' }
+    ],
+    item: [
+      { id: 'f50', icon: '✂', name: 'Thẻ 50:50 Ôn tập', price: 35, desc: 'Loại bỏ ngay 2 đáp án sai khi đang luyện chương hoặc thi thử 40 câu.' },
+      { id: 'hint', icon: '💡', name: 'Thẻ Gợi ý Triết học', price: 40, desc: 'Mở giải thích chi tiết hoặc loại bớt 1 phương án gây nhiễu.' },
+      { id: 'x2', icon: '⚡', name: 'Thẻ x2 Xu & EXP (15p)', price: 80, desc: 'Nhân đôi toàn bộ Xu Triết và EXP nhận được trong 15 phút.' },
+      { id: 'shield', icon: '🛡️', name: 'Khiên Giữ Chuỗi', price: 60, desc: 'Tự động bảo vệ chuỗi trả lời đúng khi bạn lỡ chọn nhầm 1 câu.' }
+    ]
+  };
+
+  var DAILY_QUESTS = [
+    { id: 'q_correct10', title: 'Khởi động tư duy', desc: 'Trả lời đúng 10 câu hỏi bất kỳ hôm nay', field: 'correct', target: 10, xu: 40, exp: 30 },
+    { id: 'q_streak5', title: 'Chuỗi bất bại', desc: 'Đạt chuỗi đúng liên tiếp 5 câu trong ngày', field: 'bestStreak', target: 5, xu: 50, exp: 40 },
+    { id: 'q_game1', title: 'Ngôi sao Gameshow', desc: 'Hoàn thành 1 ván Gameshow bất kỳ', field: 'games', target: 1, xu: 60, exp: 50 },
+    { id: 'q_correct25', title: 'Nhà lý luận sắc bén', desc: 'Trả lời đúng 25 câu hỏi hôm nay', field: 'correct', target: 25, xu: 100, exp: 80 }
   ];
-
-  var SHOP_FRAMES = [
-    { id: 'default', name: 'Khung tiêu chuẩn', desc: 'Bo góc mềm mại mặc định.', price: 0, icon: '🃏' },
-    { id: 'gold', name: 'Khung Viền Vàng Gold', desc: 'Viền vàng ánh kim nổi bật quanh thẻ câu hỏi.', price: 200, icon: '✨' },
-    { id: 'neon', name: 'Khung Hào Quang Chủ Đạo', desc: 'Phát sáng nhẹ theo màu chủ đạo đang dùng.', price: 320, icon: '💫' },
-    { id: 'crimson', name: 'Khung Đỏ Thắm Sao Vàng', desc: 'Viền đỏ cờ kết hợp thanh vàng đỉnh thẻ.', price: 420, icon: '🚩' }
-  ];
-
-  var SHOP_PALETTES = [
-    { id: 'default', name: 'Đỏ Cờ Truyền thống', desc: 'Màu đỏ biểu tượng của Triết học Mác - Lênin.', price: 0, color: '#b3261e' },
-    { id: 'blue', name: 'Xanh Tri thức', desc: 'Tông xanh dương học thuật điềm tĩnh.', price: 120, color: '#1d4ed8' },
-    { id: 'emerald', name: 'Xanh Lục Bảo', desc: 'Tông xanh lá tươi mới, dễ chịu khi cày đêm.', price: 120, color: '#047857' },
-    { id: 'violet', name: 'Tím Hàn Lâm', desc: 'Tông tím tư duy sâu sắc và khác biệt.', price: 150, color: '#6d28d9' }
-  ];
-
-  var SHOP_TITLES = [
-    { id: 'auto', name: 'Danh hiệu theo Cấp độ', desc: 'Tự động nâng cấp danh hiệu mỗi khi lên Level.', price: 0, icon: '🎖️' },
-    { id: 'Nhà Biện Chứng Trẻ', name: 'Nhà Biện Chứng Trẻ', desc: 'Danh hiệu độc quyền hiển thị trên thanh trạng thái.', price: 180, icon: '⚡' },
-    { id: 'Chiến Thần Duy Vật', name: 'Chiến Thần Duy Vật', desc: 'Khẳng định bản lĩnh chinh phục 600 câu hỏi.', price: 300, icon: '🔥' },
-    { id: 'Học Giả Triết Mác - Lênin', name: 'Học Giả Triết Mác - Lênin', desc: 'Danh hiệu cao quý bậc nhất của cửa hàng.', price: 500, icon: '👑' }
-  ];
-
-  var SHOP_ITEMS = [
-    { id: 'hint50', name: 'Thẻ Gợi ý 50/50', desc: 'Loại bỏ ngay 2 đáp án sai khi đang luyện tập theo chương.', price: 40, icon: '✂️' },
-    { id: 'shield', name: 'Khiên Bảo Toàn Chuỗi', desc: 'Tự động đỡ 1 lần trả lời sai để không mất chuỗi đúng liên tiếp.', price: 60, icon: '🛡️' },
-    { id: 'boost2x', name: 'Thẻ x2 Xu & EXP (15 phút)', desc: 'Nhân đôi toàn bộ Xu Triết và EXP nhận được trong 15 phút.', price: 90, icon: '⚡' }
-  ];
-
-  var DAILY_QUEST_DEFS = [
-    { id: 'ans10', title: 'Khởi động tư duy', desc: 'Trả lời đúng 10 câu hỏi bất kỳ trong ngày.', target: 10, coins: 60, xp: 50, icon: '🎯' },
-    { id: 'game1', title: 'Đấu trường trí tuệ', desc: 'Hoàn thành 1 ván Gameshow truyền hình bất kỳ.', target: 1, coins: 100, xp: 80, icon: '📺' },
-    { id: 'streak5', title: 'Phong độ ổn định', desc: 'Đạt chuỗi 5 câu trả lời đúng liên tiếp trong ngày.', target: 5, coins: 90, xp: 70, icon: '🔥' },
-    { id: 'explore3', title: 'Đào sâu kiến thức', desc: 'Đọc Ôn lý thuyết hoặc sửa đúng 3 câu từng làm sai.', target: 3, coins: 80, xp: 60, icon: '📚' }
-  ];
-
-  var EXPLAIN = window.EXPLAIN || {};
-  function explainBox(q) {
-    var txt = (q && q.exp) || EXPLAIN[q.id];
-    return txt ? h('div', { class: 'explain' }, h('b', null, 'Giải thích: '), txt) : null;
-  }
-
-  var byId = {};
-  function rebuildQuestionBank() {
-    var hidden = (store && store.hiddenQuestions) || {};
-    var custom = (store && store.customQuestions) || [];
-    Q = BASE_Q.filter(function (q) { return !hidden[q.id]; }).concat(custom);
-    byId = {};
-    Q.forEach(function (q) { byId[q.id] = q; });
-    normCache = null;
-  }
-  function chapterQs(ch) { return Q.filter(function (q) { return q.ch === ch; }); }
 
   /* ---------- Ngày tháng & Streak ---------- */
   function dateKey(offsetDays) {
@@ -128,32 +116,19 @@
       streak: { current: 0, best: 0, lastDate: null },
       sessions: { practice: {}, mix: null },
       settings: { shuffleOpts: true, theme: 'auto', mixLimit: 0, sound: true },
-      customQuestions: [],
-      hiddenQuestions: {},
-      player: {
-        coins: 100,
-        xp: 0,
-        level: 1,
-        boost2xUntil: 0,
-        inventory: {
-          bgs: ['default'],
-          frames: ['default'],
-          palettes: ['default'],
-          titles: ['auto'],
-          items: { hint50: 1, shield: 1, boost2x: 0 }
-        },
-        equipped: {
-          bg: 'default',
-          frame: 'default',
-          palette: 'default',
-          title: 'auto'
-        }
+      economy: { xu: 100, exp: 0, level: 1, totalXuEarned: 100 },
+      inventory: {
+        bgs: ['default'],
+        palettes: ['default'],
+        frames: ['default'],
+        titles: ['Tập sự Tư duy'],
+        items: { f50: 1, hint: 1, x2: 0, shield: 0 }
       },
-      daily: {
-        date: dateKey(0),
-        progress: { ans10: 0, game1: 0, streak5: 0, explore3: 0 },
-        claimed: {}
-      }
+      equipped: { bg: 'default', palette: 'default', frame: 'default', title: 'Tập sự Tư duy' },
+      buffs: { x2Until: 0, shieldActive: false },
+      daily: { date: dateKey(0), correct: 0, bestStreak: 0, streakNow: 0, games: 0, claimed: {} },
+      customQuestions: [],
+      deletedIds: {}
     };
   }
 
@@ -177,33 +152,42 @@
       d.sessions.mix = raw.sessions.mix || null;
     }
     d.settings = Object.assign(d.settings, raw.settings || {});
+    if (raw.economy && typeof raw.economy === 'object') {
+      d.economy = {
+        xu: Math.max(0, Number(raw.economy.xu) || 0),
+        exp: Math.max(0, Number(raw.economy.exp) || 0),
+        level: Math.max(1, Number(raw.economy.level) || 1),
+        totalXuEarned: Math.max(0, Number(raw.economy.totalXuEarned) || 0)
+      };
+    }
+    if (raw.inventory && typeof raw.inventory === 'object') {
+      d.inventory.bgs = Array.isArray(raw.inventory.bgs) && raw.inventory.bgs.length ? raw.inventory.bgs : ['default'];
+      d.inventory.palettes = Array.isArray(raw.inventory.palettes) && raw.inventory.palettes.length ? raw.inventory.palettes : ['default'];
+      d.inventory.frames = Array.isArray(raw.inventory.frames) && raw.inventory.frames.length ? raw.inventory.frames : ['default'];
+      d.inventory.titles = Array.isArray(raw.inventory.titles) && raw.inventory.titles.length ? raw.inventory.titles : ['Tập sự Tư duy'];
+      d.inventory.items = Object.assign({ f50: 0, hint: 0, x2: 0, shield: 0 }, raw.inventory.items || {});
+    }
+    if (raw.equipped && typeof raw.equipped === 'object') {
+      d.equipped = Object.assign(d.equipped, raw.equipped);
+    }
+    if (raw.buffs && typeof raw.buffs === 'object') {
+      d.buffs = {
+        x2Until: Number(raw.buffs.x2Until) || 0,
+        shieldActive: !!raw.buffs.shieldActive
+      };
+    }
+    if (raw.daily && typeof raw.daily === 'object' && raw.daily.date === dateKey(0)) {
+      d.daily = {
+        date: raw.daily.date,
+        correct: Number(raw.daily.correct) || 0,
+        bestStreak: Number(raw.daily.bestStreak) || 0,
+        streakNow: Number(raw.daily.streakNow) || 0,
+        games: Number(raw.daily.games) || 0,
+        claimed: raw.daily.claimed && typeof raw.daily.claimed === 'object' ? raw.daily.claimed : {}
+      };
+    }
     d.customQuestions = Array.isArray(raw.customQuestions) ? raw.customQuestions : [];
-    d.hiddenQuestions = raw.hiddenQuestions && typeof raw.hiddenQuestions === 'object' ? raw.hiddenQuestions : {};
-
-    if (raw.player && typeof raw.player === 'object') {
-      d.player.coins = typeof raw.player.coins === 'number' ? raw.player.coins : 100;
-      d.player.xp = Number(raw.player.xp) || 0;
-      d.player.level = Math.max(1, Number(raw.player.level) || 1);
-      d.player.boost2xUntil = Number(raw.player.boost2xUntil) || 0;
-      if (raw.player.inventory && typeof raw.player.inventory === 'object') {
-        var inv = raw.player.inventory;
-        d.player.inventory.bgs = Array.isArray(inv.bgs) && inv.bgs.length ? inv.bgs : ['default'];
-        d.player.inventory.frames = Array.isArray(inv.frames) && inv.frames.length ? inv.frames : ['default'];
-        d.player.inventory.palettes = Array.isArray(inv.palettes) && inv.palettes.length ? inv.palettes : ['default'];
-        d.player.inventory.titles = Array.isArray(inv.titles) && inv.titles.length ? inv.titles : ['auto'];
-        d.player.inventory.items = Object.assign({ hint50: 1, shield: 1, boost2x: 0 }, inv.items || {});
-      }
-      if (raw.player.equipped && typeof raw.player.equipped === 'object') {
-        d.player.equipped = Object.assign(d.player.equipped, raw.player.equipped);
-      }
-    }
-
-    var today = dateKey(0);
-    if (raw.daily && raw.daily.date === today) {
-      d.daily.date = today;
-      d.daily.progress = Object.assign({ ans10: 0, game1: 0, streak5: 0, explore3: 0 }, raw.daily.progress || {});
-      d.daily.claimed = raw.daily.claimed && typeof raw.daily.claimed === 'object' ? raw.daily.claimed : {};
-    }
+    d.deletedIds = raw.deletedIds && typeof raw.deletedIds === 'object' ? raw.deletedIds : {};
     return d;
   }
 
@@ -216,162 +200,173 @@
   }
 
   var store = load();
-  var normCache = null;
-  rebuildQuestionBank();
 
-  function ensureDaily() {
+  function ensureDailyToday() {
     var today = dateKey(0);
     if (!store.daily || store.daily.date !== today) {
-      store.daily = {
-        date: today,
-        progress: { ans10: 0, game1: 0, streak5: 0, explore3: 0 },
-        claimed: {}
-      };
+      store.daily = { date: today, correct: 0, bestStreak: 0, streakNow: 0, games: 0, claimed: {} };
     }
   }
+
+  function rebuildQuestionBank() {
+    var deleted = store.deletedIds || {};
+    var customs = Array.isArray(store.customQuestions) ? store.customQuestions : [];
+    Q = RAW_QUESTIONS.filter(function (q) { return !deleted[q.id]; }).concat(customs);
+    byId = {};
+    EXPLAIN = Object.assign({}, BASE_EXPLAIN);
+    Q.forEach(function (q) {
+      byId[q.id] = q;
+      if (q.explain) EXPLAIN[q.id] = q.explain;
+    });
+    normCache = null;
+  }
+
+  rebuildQuestionBank();
+
+  function explainBox(q) {
+    return EXPLAIN[q.id] ? h('div', { class: 'explain' }, h('b', null, 'Giải thích: '), EXPLAIN[q.id]) : null;
+  }
+
+  function chapterQs(ch) { return Q.filter(function (q) { return q.ch === ch; }); }
 
   function save() {
-    ensureDaily();
     try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
     updateWrongBadge();
-    renderPlayerHud();
+    renderHud();
   }
 
-  /* ---------- Hệ thống EXP, Level, Xu Triết & Nhiệm vụ ngày ---------- */
-  function xpForNextLevel(lvl) {
-    return lvl * 100;
+  /* ---------- Hệ thống Xu Triết, EXP, Level & Nhiệm vụ ngày ---------- */
+  function xpNeeded(lv) {
+    return 100 + (Math.max(1, lv) - 1) * 50;
   }
 
-  function rankTitleForLevel(lvl) {
-    if (lvl >= 17) return '👑 Bậc thầy Mác - Lênin';
-    if (lvl >= 12) return '🏛️ Nhà Lý luận thực tiễn';
-    if (lvl >= 8) return '🔥 Chiến sĩ Duy vật';
-    if (lvl >= 5) return '⚙️ Biện chứng tập sự';
-    if (lvl >= 3) return '📖 Người tìm chân lý';
-    return '🌱 Tân binh Triết học';
+  function isX2Active() {
+    return store.buffs && store.buffs.x2Until && Date.now() < store.buffs.x2Until;
   }
 
-  function activeTitle() {
-    var eq = store.player.equipped.title;
-    if (eq && eq !== 'auto') return '🎖️ ' + eq;
-    return rankTitleForLevel(store.player.level);
-  }
-
-  function isBoost2xActive() {
-    return (store.player.boost2xUntil || 0) > Date.now();
-  }
-
-  function fireConfetti() {
+  function launchConfetti(count) {
     var layer = document.getElementById('confettiLayer');
     if (!layer) return;
-    var colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
-    for (var i = 0; i < 36; i++) {
-      var p = document.createElement('span');
-      p.className = 'confetti-piece';
-      p.style.left = Math.round(Math.random() * 100) + 'vw';
-      p.style.background = colors[i % colors.length];
-      p.style.animationDelay = (Math.random() * 0.35).toFixed(2) + 's';
-      layer.appendChild(p);
+    var colors = ['#b3261e', '#d99a08', '#16804a', '#2563eb', '#9333ea', '#f59e0b'];
+    var total = count || 34;
+    for (var i = 0; i < total; i++) {
+      var piece = document.createElement('span');
+      piece.className = 'confetti-piece';
+      piece.style.left = Math.round(Math.random() * 100) + 'vw';
+      piece.style.background = colors[i % colors.length];
+      piece.style.setProperty('--dx', Math.round((Math.random() - 0.5) * 220) + 'px');
+      piece.style.setProperty('--rot', Math.round(360 + Math.random() * 540) + 'deg');
+      piece.style.setProperty('--dur', (1.4 + Math.random() * 1.1).toFixed(2) + 's');
+      piece.style.animationDelay = (Math.random() * 0.25).toFixed(2) + 's';
+      layer.appendChild(piece);
       (function (el) {
-        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 2000);
-      })(p);
+        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 2800);
+      })(piece);
     }
   }
 
-  function grantRewards(coins, xp, reason) {
-    var mult = isBoost2xActive() ? 2 : 1;
-    var gotCoins = Math.round((coins || 0) * mult);
-    var gotXp = Math.round((xp || 0) * mult);
-    store.player.coins = (store.player.coins || 0) + gotCoins;
-    store.player.xp = (store.player.xp || 0) + gotXp;
+  function awardProgress(baseXu, baseExp, reason, silent) {
+    var mult = isX2Active() ? 2 : 1;
+    var xuGain = Math.max(0, Math.round((baseXu || 0) * mult));
+    var expGain = Math.max(0, Math.round((baseExp || 0) * mult));
+    if (!xuGain && !expGain) return { xu: 0, exp: 0 };
+
+    store.economy.xu += xuGain;
+    store.economy.totalXuEarned += xuGain;
+    store.economy.exp += expGain;
 
     var leveledUp = false;
-    while (store.player.xp >= xpForNextLevel(store.player.level)) {
-      store.player.xp -= xpForNextLevel(store.player.level);
-      store.player.level++;
-      store.player.coins += 50;
+    var bonusXu = 0;
+    while (store.economy.exp >= xpNeeded(store.economy.level)) {
+      store.economy.exp -= xpNeeded(store.economy.level);
+      store.economy.level++;
       leveledUp = true;
-    }
-    save();
-
-    if (reason) {
-      var parts = [];
-      if (gotCoins > 0) parts.push('+' + gotCoins + ' Xu Triết');
-      if (gotXp > 0) parts.push('+' + gotXp + ' EXP');
-      if (parts.length) toast(reason + ': ' + parts.join(' · ') + (mult > 1 ? ' (x2!)' : ''), 'ok');
+      bonusXu += 30;
     }
     if (leveledUp) {
-      fireConfetti();
+      store.economy.xu += bonusXu;
+      store.economy.totalXuEarned += bonusXu;
       sfx.win();
-      toast('🎉 Chúc mừng! Bạn đã lên Cấp ' + store.player.level + ' (+50 Xu Triết)!', 'ok');
+      launchConfetti(42);
+      toast('🎉 Chúc mừng lên Level ' + store.economy.level + '! Thưởng +' + bonusXu + ' Xu Triết!', 'ok');
+    } else if (!silent && reason) {
+      toast(reason + ': +' + xuGain + ' Xu Triết, +' + expGain + ' EXP' + (mult > 1 ? ' (x2)' : ''), 'ok');
     }
-    return { coins: gotCoins, xp: gotXp, leveledUp: leveledUp };
+    return { xu: xuGain + bonusXu, exp: expGain };
   }
 
-  function bumpQuest(id, amount, isMax) {
-    ensureDaily();
-    var cur = store.daily.progress[id] || 0;
-    store.daily.progress[id] = isMax ? Math.max(cur, amount) : (cur + amount);
+  function recordGameComplete(gameName, xuReward, expReward) {
+    ensureDailyToday();
+    store.daily.games = (store.daily.games || 0) + 1;
+    var res = awardProgress(xuReward, expReward, null, true);
+    save();
+    toast('🏆 Hoàn thành ' + gameName + ': +' + res.xu + ' Xu Triết & +' + res.exp + ' EXP!', 'ok');
+    return res;
   }
 
-  function readyQuestsCount() {
-    ensureDaily();
-    var cnt = 0;
-    DAILY_QUEST_DEFS.forEach(function (q) {
-      var prog = store.daily.progress[q.id] || 0;
-      if (prog >= q.target && !store.daily.claimed[q.id]) cnt++;
-    });
-    return cnt;
-  }
-
-  function claimQuest(qId) {
-    ensureDaily();
-    var def = DAILY_QUEST_DEFS.filter(function (x) { return x.id === qId; })[0];
-    if (!def) return;
-    var prog = store.daily.progress[qId] || 0;
-    if (prog < def.target || store.daily.claimed[qId]) return;
-    store.daily.claimed[qId] = true;
-    fireConfetti();
+  function claimDailyQuest(quest) {
+    ensureDailyToday();
+    if (store.daily.claimed[quest.id]) return;
+    var curVal = Number(store.daily[quest.field]) || 0;
+    if (curVal < quest.target) return;
+    store.daily.claimed[quest.id] = 1;
     sfx.win();
-    grantRewards(def.coins, def.xp, 'Hoàn thành nhiệm vụ "' + def.title + '"');
+    launchConfetti(28);
+    awardProgress(quest.xu, quest.exp, '🎁 Nhận thưởng nhiệm vụ "' + quest.title + '"', false);
+    save();
+    home();
   }
 
-  function renderPlayerHud() {
+  function renderHud() {
     var hud = document.getElementById('playerHud');
     if (!hud) return;
-    ensureDaily();
-    var lvl = store.player.level;
-    var xp = store.player.xp;
-    var need = xpForNextLevel(lvl);
-    var pct = Math.min(100, Math.round((xp / need) * 100));
-    var readyQ = readyQuestsCount();
-    var shieldCnt = (store.player.inventory.items && store.player.inventory.items.shield) || 0;
-    var boostLeftMin = isBoost2xActive() ? Math.ceil((store.player.boost2xUntil - Date.now()) / 60000) : 0;
+    ensureDailyToday();
+    var eco = store.economy;
+    var need = xpNeeded(eco.level);
+    var pct = Math.min(100, Math.round((eco.exp / need) * 100));
+    var readyQuests = DAILY_QUESTS.filter(function (q) {
+      return !store.daily.claimed[q.id] && (Number(store.daily[q.field]) || 0) >= q.target;
+    }).length;
+    var claimedCount = Object.keys(store.daily.claimed).length;
+
+    var buffs = [];
+    if (isX2Active()) {
+      var minsLeft = Math.max(1, Math.ceil((store.buffs.x2Until - Date.now()) / 60000));
+      buffs.push(h('span', { class: 'buff-pill', title: 'Đang nhân đôi Xu Triết và EXP' }, '⚡ x2 (' + minsLeft + 'p)'));
+    }
+    if (store.buffs.shieldActive) {
+      buffs.push(h('span', { class: 'buff-pill', title: 'Bảo vệ chuỗi đúng khi chọn nhầm 1 câu' }, '🛡️ Khiên chuỗi'));
+    }
 
     hud.replaceChildren(
       h('div', { class: 'player-left' },
-        h('span', { class: 'lvl-badge' }, 'Lv.' + lvl),
-        h('span', { class: 'title-badge' }, activeTitle()),
-        h('span', { class: 'xp-box', title: 'Kinh nghiệm lên cấp tiếp theo' },
-          h('span', { class: 'xp-track' }, h('span', { class: 'xp-fill', style: 'width:' + pct + '%' })),
-          h('span', null, xp + '/' + need + ' EXP'))),
+        h('span', { class: 'lvl-badge' }, '⭐ Lv.' + eco.level),
+        h('span', { class: 'title-badge' }, '🏅 ' + (store.equipped.title || 'Tập sự Tư duy')),
+        h('div', { class: 'xp-box', title: 'Kinh nghiệm lên cấp tiếp theo' },
+          h('div', { class: 'xp-track' }, h('span', { class: 'xp-fill', style: 'width:' + pct + '%' })),
+          h('span', null, eco.exp + '/' + need + ' EXP')),
+        buffs),
       h('div', { class: 'player-right' },
-        boostLeftMin > 0 ? h('span', { class: 'buff-pill' }, '⚡ x2 Xu/EXP (' + boostLeftMin + 'p)') : null,
-        shieldCnt > 0 ? h('span', { class: 'chip', title: 'Khiên giữ chuỗi sẵn sàng' }, '🛡️ ×' + shieldCnt) : null,
         h('button', {
-          class: 'btn small' + (readyQ ? ' gold' : ''),
-          type: 'button',
-          onclick: function () { shopPage('quests'); }
-        }, readyQ ? ('🎁 Nhận thưởng (' + readyQ + ')') : '📋 Nhiệm vụ ngày'),
+          class: 'btn small' + (readyQuests ? ' gold' : ''), type: 'button',
+          title: 'Xem nhiệm vụ ngày',
+          onclick: function () {
+            home();
+            setTimeout(function () {
+              var qEl = document.getElementById('dailyQuestsSection');
+              if (qEl) qEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 60);
+          }
+        }, readyQuests ? ('🎁 Nhận thưởng (' + readyQuests + ')') : ('📋 Nhiệm vụ (' + claimedCount + '/' + DAILY_QUESTS.length + ')')),
         h('button', {
-          class: 'xu-pill',
-          type: 'button',
-          title: 'Mở Cửa hàng Xu Triết',
-          onclick: function () { shopPage('bgs'); }
-        }, '🪙 ' + (store.player.coins || 0).toLocaleString() + ' Xu Triết'))
+          class: 'xu-pill', type: 'button',
+          title: 'Mở Cửa hàng Xu Triết để mua Background & vật phẩm',
+          onclick: function () { shopPage('bg'); }
+        }, '🪙 ' + eco.xu.toLocaleString() + ' Xu Triết'))
     );
   }
 
+  /* ---------- Hoạt động & Ghi nhận kết quả ---------- */
   function bumpActivity() {
     var today = dateKey(0);
     var yesterday = dateKey(-1);
@@ -399,18 +394,21 @@
   }
 
   function record(q, ok, silent) {
+    ensureDailyToday();
     if (ok) {
-      var wasWrong = !!store.wrong[q.id];
       store.seen[q.id] = 1;
       delete store.wrong[q.id];
-      bumpQuest('ans10', 1, false);
-      if (wasWrong) bumpQuest('explore3', 1, false);
-      if (!silent) {
-        sfx.ok();
-        grantRewards(5, 10, null);
+      store.daily.correct = (store.daily.correct || 0) + 1;
+      store.daily.streakNow = (store.daily.streakNow || 0) + 1;
+      if (store.daily.streakNow > (store.daily.bestStreak || 0)) {
+        store.daily.bestStreak = store.daily.streakNow;
       }
+      awardProgress(5, 10, null, true);
+      if (!silent) sfx.ok();
     } else {
       store.wrong[q.id] = (store.wrong[q.id] || 0) + 1;
+      store.daily.streakNow = 0;
+      awardProgress(0, 2, null, true);
       if (!silent) sfx.bad();
     }
     bumpActivity();
@@ -513,7 +511,7 @@
     var stack = document.getElementById('toastStack');
     if (!stack) return;
     if (!type) {
-      if (/chính xác|đã lưu|đã sao chép|thành công|hoàn tất|khôi phục|xuất|nhận|mua|trang bị|thêm/i.test(msg)) type = 'ok';
+      if (/chính xác|đã lưu|đã sao chép|thành công|hoàn tất|khôi phục|xuất|nhận thưởng|mua|trang bị|thăng cấp|đã thêm/i.test(msg)) type = 'ok';
       else if (/lỗi|hết giờ|không hợp lệ|chưa chính xác|mất lượt|không đủ/i.test(msg)) type = 'bad';
       else type = 'info';
     }
@@ -606,16 +604,28 @@
     if (el) el.textContent = wrongIds().length;
   }
 
-  function applyTheme() {
+  var previewTimer = null;
+  function applyCosmetics(override) {
     var root = document.documentElement;
     root.setAttribute('data-theme', store.settings.theme || 'auto');
-    var eq = (store.player && store.player.equipped) || {};
-    if (eq.bg && eq.bg !== 'default') root.setAttribute('data-bg', eq.bg);
-    else root.removeAttribute('data-bg');
-    if (eq.frame && eq.frame !== 'default') root.setAttribute('data-frame', eq.frame);
-    else root.removeAttribute('data-frame');
-    if (eq.palette && eq.palette !== 'default') root.setAttribute('data-palette', eq.palette);
-    else root.removeAttribute('data-palette');
+    var bg = (override && override.bg !== undefined) ? override.bg : (store.equipped.bg || 'default');
+    var pal = (override && override.palette !== undefined) ? override.palette : (store.equipped.palette || 'default');
+    var frm = (override && override.frame !== undefined) ? override.frame : (store.equipped.frame || 'default');
+
+    if (bg && bg !== 'default') root.setAttribute('data-bg', bg); else root.removeAttribute('data-bg');
+    if (pal && pal !== 'default') root.setAttribute('data-palette', pal); else root.removeAttribute('data-palette');
+    if (frm && frm !== 'default') root.setAttribute('data-frame', frm); else root.removeAttribute('data-frame');
+  }
+
+  function previewCosmetic(type, id, name) {
+    clearTimeout(previewTimer);
+    var ov = {};
+    ov[type] = id;
+    applyCosmetics(ov);
+    toast('👁 Đang xem thử "' + name + '" trong 5 giây…', 'info');
+    previewTimer = setTimeout(function () {
+      applyCosmetics();
+    }, 5000);
   }
 
   function noShuffle(q) {
@@ -626,7 +636,7 @@
   function makeItem(q) {
     var order = [0, 1, 2, 3];
     if (store.settings.shuffleOpts && !noShuffle(q)) order = shuffle(order);
-    return { q: q, order: order, picked: null, hiddenOpts: [] };
+    return { q: q, order: order, picked: null, hiddenOpts: [], hintShown: false };
   }
   function correctPos(it) { return it.order.indexOf(it.q.a); }
 
@@ -637,13 +647,64 @@
       }));
   }
 
+  /* ---------- Thanh vật phẩm trợ giúp trong lúc làm bài ---------- */
+  function powerupBar(it, rerenderFn) {
+    if (!it || it.picked !== null) return null;
+    var items = store.inventory.items || {};
+    var f50Count = items.f50 || 0;
+    var hintCount = items.hint || 0;
+
+    var useF50 = function () {
+      if (f50Count <= 0 || (it.hiddenOpts && it.hiddenOpts.length >= 2)) return;
+      store.inventory.items.f50 = f50Count - 1;
+      var cp = correctPos(it);
+      var wrongs = shuffle([0, 1, 2, 3].filter(function (k) { return k !== cp; }));
+      it.hiddenOpts = [wrongs[0], wrongs[1]];
+      save();
+      toast('✂ Đã dùng thẻ 50:50, loại bỏ 2 phương án sai!', 'ok');
+      rerenderFn(false);
+    };
+
+    var useHint = function () {
+      if (hintCount <= 0 || it.hintShown) return;
+      store.inventory.items.hint = hintCount - 1;
+      it.hintShown = true;
+      var cp = correctPos(it);
+      var wrongs = shuffle([0, 1, 2, 3].filter(function (k) { return k !== cp && (!it.hiddenOpts || it.hiddenOpts.indexOf(k) < 0); }));
+      if (wrongs.length) {
+        it.hiddenOpts = (it.hiddenOpts || []).concat([wrongs[0]]);
+      }
+      save();
+      toast('💡 Đã dùng thẻ Gợi ý!', 'ok');
+      rerenderFn(false);
+    };
+
+    return h('div', { class: 'powerup-bar' },
+      h('span', { class: 'small muted' }, '🎒 Vật phẩm trợ giúp:'),
+      h('div', { class: 'powerup-group' },
+        h('button', {
+          class: 'btn small', type: 'button',
+          disabled: f50Count <= 0 || (it.hiddenOpts && it.hiddenOpts.length >= 2) ? true : null,
+          onclick: useF50
+        }, '✂ 50:50 (' + f50Count + ')'),
+        h('button', {
+          class: 'btn small', type: 'button',
+          disabled: hintCount <= 0 || it.hintShown ? true : null,
+          onclick: useHint
+        }, '💡 Gợi ý (' + hintCount + ')'),
+        h('button', {
+          class: 'btn ghost small', type: 'button',
+          onclick: function () { shopPage('item'); }
+        }, '+ Mua thêm')));
+  }
+
   /* ---------- Lưu / làm tiếp phần đang ôn dở ---------- */
   function serItems(items) {
     return items.map(function (it) { return { id: it.q.id, o: it.order, p: it.picked }; });
   }
   function desItems(arr) {
     return arr.filter(function (x) { return byId[x.id]; })
-      .map(function (x) { return { q: byId[x.id], order: x.o, picked: x.p, hiddenOpts: [] }; });
+      .map(function (x) { return { q: byId[x.id], order: x.o, picked: x.p, hiddenOpts: [], hintShown: false }; });
   }
   function answeredCount(items) {
     return items.filter(function (it) { return it.picked !== null; }).length;
@@ -745,14 +806,17 @@
   }
 
   function optionButton(it, k, state, onClick) {
-    var cls = 'opt' + (state ? ' ' + state : '');
-    return h('button', {
+    var isHidden = it.hiddenOpts && it.hiddenOpts.indexOf(k) >= 0 && it.picked === null;
+    var cls = 'opt' + (state ? ' ' + state : '') + (isHidden ? ' dim' : '');
+    var btn = h('button', {
       class: cls, type: 'button',
-      disabled: state.indexOf('locked') >= 0 ? true : null,
+      disabled: (state.indexOf('locked') >= 0 || isHidden) ? true : null,
       onclick: onClick, 'data-k': k
     },
       h('span', { class: 'key' }, LETTERS[k]),
       h('span', { class: 'txt' }, it.q.o[it.order[k]]));
+    if (isHidden) btn.style.visibility = 'hidden';
+    return btn;
   }
   function qHeader(it, label) {
     return h('div', { class: 'qmeta' },
@@ -785,7 +849,7 @@
     a.click();
     document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-    toast('Đã xuất file sao lưu tiến độ (.json)!', 'ok');
+    toast('Đã xuất file sao lưu tiến độ & câu hỏi (.json)!', 'ok');
   }
 
   function importBackupFile(file) {
@@ -795,7 +859,7 @@
       try {
         var parsed = JSON.parse(String(reader.result || '{}'));
         var candidate = parsed && parsed.data && typeof parsed.data === 'object' ? parsed.data : parsed;
-        if (!candidate || typeof candidate !== 'object' || (!candidate.seen && !candidate.wrong && !candidate.stats)) {
+        if (!candidate || typeof candidate !== 'object' || (!candidate.seen && !candidate.wrong && !candidate.stats && !candidate.economy)) {
           toast('File JSON không đúng định dạng sao lưu của web.', 'bad');
           return;
         }
@@ -804,13 +868,13 @@
         askConfirm({
           icon: '📥',
           title: 'Khôi phục dữ liệu từ file sao lưu?',
-          message: 'Bản sao lưu có ' + seenCount + ' câu đã làm đúng và ' + imported.player.coins + ' Xu Triết. Tiến độ hiện tại sẽ được thay thế.',
+          message: 'Bản sao lưu có ' + seenCount + ' câu đã làm đúng và ' + imported.economy.xu + ' Xu Triết. Tiến độ hiện tại sẽ được thay thế.',
           okText: 'Khôi phục ngay'
         }, function () {
           store = imported;
           rebuildQuestionBank();
           save();
-          applyTheme();
+          applyCosmetics();
           toast('Đã khôi phục tiến độ thành công!', 'ok');
           openSettings();
         });
@@ -830,7 +894,7 @@
       onchange: function (e) {
         store.settings.theme = e.target.value;
         save();
-        applyTheme();
+        applyCosmetics();
       }
     },
       h('option', { value: 'light' }, 'Sáng'),
@@ -876,14 +940,14 @@
 
       h('section', { class: 'card settings-card' },
         h('h2', null, 'Giao diện'),
-        h('p', { class: 'muted' }, 'Chọn giao diện sáng, tối hoặc tự động theo thiết bị. Hình nền và khung thẻ có thể đổi thêm trong Cửa hàng Xu Triết.'),
+        h('p', { class: 'muted' }, 'Chọn giao diện sáng, tối hoặc tự động theo thiết bị. Hình nền và bảng màu mua tại Cửa hàng sẽ tự động đồng bộ.'),
         h('label', { class: 'settings-row', for: 'settingsTheme' },
           h('span', null, 'Chế độ hiển thị'), themeSelect),
         h('div', { class: 'theme-preview-row' },
-          h('button', { class: 'btn', onclick: function () { store.settings.theme = 'light'; save(); applyTheme(); themeSelect.value = 'light'; } }, '☀️ Sáng'),
-          h('button', { class: 'btn', onclick: function () { store.settings.theme = 'dark'; save(); applyTheme(); themeSelect.value = 'dark'; } }, '🌙 Tối'),
-          h('button', { class: 'btn', onclick: function () { store.settings.theme = 'auto'; save(); applyTheme(); themeSelect.value = 'auto'; } }, '💻 Theo thiết bị'),
-          h('button', { class: 'btn primary', onclick: function () { shopPage('bgs'); } }, '🏪 Đổi hình nền & khung thẻ'))),
+          h('button', { class: 'btn', onclick: function () { store.settings.theme = 'light'; save(); applyCosmetics(); themeSelect.value = 'light'; } }, '☀️ Sáng'),
+          h('button', { class: 'btn', onclick: function () { store.settings.theme = 'dark'; save(); applyCosmetics(); themeSelect.value = 'dark'; } }, '🌙 Tối'),
+          h('button', { class: 'btn', onclick: function () { store.settings.theme = 'auto'; save(); applyCosmetics(); themeSelect.value = 'auto'; } }, '💻 Theo thiết bị'),
+          h('button', { class: 'btn gold', onclick: function () { shopPage('bg'); } }, '🏪 Đổi Background & Theme'))),
 
       h('section', { class: 'card settings-card' },
         h('h2', null, 'Trải nghiệm làm bài'),
@@ -900,7 +964,7 @@
 
       h('section', { class: 'card settings-card' },
         h('h2', null, 'Sao lưu & Khôi phục dữ liệu'),
-        h('p', { class: 'muted' }, 'Hiện tại bạn đã làm đúng ' + seenCount + '/' + Q.length + ' câu và sở hữu ' + store.player.coins + ' Xu Triết. Xuất file .json để chuyển tiến độ sang máy khác.'),
+        h('p', { class: 'muted' }, 'Hiện tại bạn đã làm đúng ' + seenCount + '/' + Q.length + ' câu · ' + store.economy.xu.toLocaleString() + ' Xu Triết · Level ' + store.economy.level + '. Xuất file .json để chuyển dữ liệu sang thiết bị khác.'),
         fileInput,
         h('div', { class: 'actions' },
           h('button', { class: 'btn primary', onclick: exportBackup }, '⬇ Xuất file sao lưu (.json)'),
@@ -912,7 +976,7 @@
               askConfirm({
                 icon: '⚠️',
                 title: 'Xoá toàn bộ tiến độ học tập?',
-                message: 'Toàn bộ lịch sử câu đúng, câu sai, đánh dấu sao, Xu Triết, Level và vật phẩm cửa hàng sẽ được đặt lại.',
+                message: 'Toàn bộ lịch sử câu đúng, câu sai, Xu Triết, Level, vật phẩm và kỷ lục gameshow sẽ bị đặt lại.',
                 okText: 'Xoá toàn bộ',
                 danger: true
               }, function () {
@@ -921,7 +985,7 @@
                 store.settings = keepSettings;
                 rebuildQuestionBank();
                 save();
-                applyTheme();
+                applyCosmetics();
                 toast('Đã đặt lại toàn bộ tiến độ.', 'info');
                 openSettings();
               });
@@ -933,10 +997,42 @@
   }
 
   /* ---------- Trang chủ ---------- */
+  function buildDailyQuestsCard() {
+    ensureDailyToday();
+    var cards = DAILY_QUESTS.map(function (q) {
+      var cur = Math.min(q.target, Number(store.daily[q.field]) || 0);
+      var pct = Math.round((cur / q.target) * 100);
+      var done = cur >= q.target;
+      var claimed = !!store.daily.claimed[q.id];
+      var cls = 'quest-card' + (claimed ? ' claimed' : (done ? ' ready' : ''));
+      return h('div', { class: cls },
+        h('div', { class: 'quest-top' },
+          h('div', null,
+            h('div', { class: 'quest-title' }, q.title),
+            h('div', { class: 'muted small' }, q.desc)),
+          h('span', { class: 'quest-reward' }, '🪙 +' + q.xu + ' · +' + q.exp + ' EXP')),
+        h('div', { class: 'progress', style: 'margin:4px 0' }, h('span', { style: 'width:' + pct + '%' })),
+        h('div', { class: 'row between' },
+          h('span', { class: 'small muted' }, 'Tiến độ: ' + cur + '/' + q.target),
+          claimed
+            ? h('span', { class: 'chip ok-t' }, '✔ Đã nhận thưởng')
+            : (done
+                ? h('button', { class: 'btn gold small', onclick: function () { claimDailyQuest(q); } }, '🎁 Nhận thưởng')
+                : h('span', { class: 'chip' }, 'Đang thực hiện'))));
+    });
+
+    return h('section', { class: 'card wide stack', id: 'dailyQuestsSection' },
+      h('div', { class: 'row between' },
+        h('div', null,
+          h('div', { class: 'eyebrow', style: 'margin-bottom:2px' }, 'NHIỆM VỤ HẰNG NGÀY · LÀM MỚI MỖI NGÀY'),
+          h('h2', { style: 'margin:0' }, '📋 Hoàn thành nhiệm vụ để nhận Xu Triết & EXP')),
+        h('button', { class: 'btn gold small', onclick: function () { shopPage('bg'); } }, '🏪 Tiêu Xu tại Cửa hàng →')),
+      h('div', { class: 'quest-grid' }, cards));
+  }
+
   function home() {
     stopTimer(); S = null;
     setNav('navHome');
-    ensureDaily();
     var seenAll = Q.filter(function (q) { return store.seen[q.id]; }).length;
     var streak = effectiveStreak();
 
@@ -970,41 +1066,21 @@
     var mix = h('section', { class: 'card mix' },
       h('div', { class: 'eyebrow' }, 'Ôn tổng hợp'),
       h('h3', null, MIX_SIZE + ' câu ngẫu nhiên từ cả 3 chương'),
-      h('div', { class: 'meta' }, 'Làm như đi thi: chọn đáp án, nộp bài rồi xem điểm và thưởng Xu Triết.' +
+      h('div', { class: 'meta' }, 'Làm như đi thi: chọn đáp án, nộp bài rồi xem điểm, nhận thưởng Xu Triết & EXP.' +
         (mixStat.runs ? ' · Đã làm ' + mixStat.runs + ' lần, điểm cao nhất ' + mixStat.best + '/' + MIX_SIZE : '')),
       h('div', { class: 'actions' },
         limSel,
         h('button', { class: 'btn primary big', onclick: function () { startMix(parseInt(limSel.value, 10)); } }, 'Bắt đầu đề ' + MIX_SIZE + ' câu')));
 
     var fun = h('section', { class: 'card wide' },
-      h('div', { class: 'eyebrow' }, 'ĐẤU TRƯỜNG GAMESHOW · KIẾM XU TRIẾT'),
-      h('h3', null, 'Thách thức tri thức - Chinh phục đỉnh cao & săn Xu Triết'),
-      h('div', { class: 'meta' }, 'Hoàn thành các gameshow để nhận Xu Triết và EXP, dùng đổi hình nền, khung thẻ và vật phẩm trong Cửa hàng.'),
+      h('div', { class: 'eyebrow' }, 'ĐẤU TRƯỜNG GAMESHOW TRUYỀN HÌNH · THƯỞNG XU TRIẾT'),
+      h('h3', null, 'Thách thức tri thức - Chinh phục đỉnh cao'),
+      h('div', { class: 'meta' }, 'Bốn gameshow: Ai là triệu phú, Đường lên đỉnh Olympia, Chiếc nón kỳ diệu và Jeopardy. Hoàn thành mỗi ván để nhận Xu Triết & EXP đổi giao diện!'),
       h('div', { class: 'actions' },
         h('button', { class: 'btn primary', onclick: function () { startMillionaire(); } }, '🏆 Ai là triệu phú'),
+        h('button', { class: 'btn primary', onclick: function () { gameMenu(); } }, '📺 Chọn gameshow'),
         h('button', { class: 'btn primary', onclick: function () { startOlympia(); } }, '🏔️ Đỉnh Olympia'),
-        h('button', { class: 'btn', onclick: function () { gameMenu(); } }, '📺 Tất cả 4 gameshow'),
-        h('button', { class: 'btn gold', onclick: function () { shopPage('bgs'); } }, '🏪 Mở Cửa hàng')));
-
-    /* Thẻ nhiệm vụ ngày tóm gọn ngay trên Trang chủ */
-    var questCards = DAILY_QUEST_DEFS.map(function (qd) {
-      var prog = Math.min(qd.target, store.daily.progress[qd.id] || 0);
-      var isClaimed = !!store.daily.claimed[qd.id];
-      var isReady = prog >= qd.target && !isClaimed;
-      return h('div', { class: 'card quest-card' + (isReady ? ' ready' : '') + (isClaimed ? ' claimed' : '') },
-        h('div', { class: 'row between' },
-          h('b', null, qd.icon + ' ' + qd.title),
-          h('span', { class: 'chip' }, prog + '/' + qd.target)),
-        h('div', { class: 'muted small' }, qd.desc),
-        h('div', { class: 'progress' }, h('span', { style: 'width:' + Math.round(prog / qd.target * 100) + '%' })),
-        h('div', { class: 'row between' },
-          h('span', { class: 'small' }, 'Thưởng: ', h('b', null, '+' + qd.coins + ' Xu'), ' · +' + qd.xp + ' EXP'),
-          isClaimed
-            ? h('span', { class: 'ok-t small' }, '✔ Đã nhận')
-            : (isReady
-              ? h('button', { class: 'btn gold small', onclick: function () { claimQuest(qd.id); home(); } }, '🎁 Nhận thưởng')
-              : h('span', { class: 'muted small' }, 'Đang thực hiện'))));
-    });
+        h('button', { class: 'btn gold', onclick: function () { shopPage('bg'); } }, '🏪 Cửa hàng Background')));
 
     var pend = pendingList();
     mount(h('div', { class: 'stack' },
@@ -1014,16 +1090,12 @@
           h('span', { class: 'streak-pill', title: 'Chuỗi ngày học liên tiếp' },
             streak ? ('🔥 Chuỗi ' + streak + ' ngày liên tiếp') : '✨ Bắt đầu chuỗi học hôm nay')),
         h('h1', null, 'Ôn tập Triết học Mác - Lênin'),
-        h('p', null, 'Ngân hàng ' + Q.length + ' câu trắc nghiệm, chia theo chương. Luyện tập, hoàn thành nhiệm vụ ngày, cày EXP thăng cấp và săn Xu Triết mở khóa giao diện.'),
+        h('p', null, 'Ngân hàng ' + Q.length + ' câu trắc nghiệm, chia theo chương. Luyện tập theo chương, đề thi tổng hợp, nhiệm vụ ngày và Gameshow truyền hình nhận Xu Triết.'),
         h('div', { class: 'progress', title: 'Tiến độ chung' },
           h('span', { style: 'width:' + (Q.length ? Math.round(seenAll / Q.length * 100) : 0) + '%' })),
         h('div', { class: 'small muted' }, 'Đã làm đúng ' + seenAll + '/' + Q.length + ' câu (' + (Q.length ? Math.round(seenAll / Q.length * 100) : 0) + '%) · lưu cục bộ trên trình duyệt')),
       pend.length ? h('section', { class: 'stack' }, h('h2', null, 'Đang ôn dở'), pend.map(function (p) { return pendingCard(p, home); })) : null,
-      h('section', { class: 'stack' },
-        h('div', { class: 'row between' },
-          h('h2', { style: 'margin:0' }, '📋 Nhiệm vụ ngày (' + formatDateVN(dateKey(0)) + ')'),
-          h('button', { class: 'btn ghost small', onclick: function () { shopPage('bgs'); } }, 'Tiêu Xu tại Cửa hàng →')),
-        h('div', { class: 'quest-grid' }, questCards)),
+      buildDailyQuestsCard(),
       h('div', { class: 'grid' }, cards, mix, fun)));
   }
 
@@ -1095,4 +1167,1879 @@
   }
   function restartPractice() {
     S.items = shuffle(S.cfg.pool).map(makeItem);
-    S.i = 0; S.right = 0; S.wrong = 0; S.streak
+    S.i = 0; S.right = 0; S.wrong = 0; S.streak = 0; S.wrongIds = []; S.runs++;
+    delete store.sessions.practice[S.cfg.sid];
+    stat(S.cfg.key).runs++; save();
+    renderPractice();
+  }
+  function pickPractice(k) {
+    var it = S.items[S.i];
+    if (it.picked !== null) return;
+    if (it.hiddenOpts && it.hiddenOpts.indexOf(k) >= 0) return;
+    it.picked = k;
+    var ok = it.order[k] === it.q.a;
+    record(it.q, ok);
+    if (ok) {
+      S.right++; S.streak++;
+      if (S.streak > S.best) S.best = S.streak;
+      var st = stat(S.cfg.key);
+      if (S.best > st.bestStreak) st.bestStreak = S.best;
+    } else {
+      S.wrong++;
+      if (store.buffs && store.buffs.shieldActive && S.streak > 0) {
+        store.buffs.shieldActive = false;
+        toast('🛡️ Khiên Giữ Chuỗi đã kích hoạt! Bảo toàn chuỗi ' + S.streak + ' câu đúng.', 'info');
+      } else {
+        S.streak = 0;
+      }
+      if (S.wrongIds.indexOf(it.q.id) < 0) S.wrongIds.push(it.q.id);
+    }
+    save();
+    renderPractice(false);
+  }
+  function nextPractice() {
+    var it = S.items[S.i];
+    if (it.picked === null) return;
+    if (S.i + 1 < S.items.length) { S.i++; renderPractice(); }
+    else finishPractice();
+  }
+  function renderPractice(scroll) {
+    saveSession();
+    var it = S.items[S.i];
+    var total = S.items.length;
+    var answered = it.picked !== null;
+    var ok = answered && it.order[it.picked] === it.q.a;
+    var cp = correctPos(it);
+
+    var opts = [0, 1, 2, 3].map(function (k) {
+      var state = '';
+      if (answered) {
+        if (k === cp) state = 'correct';
+        else if (k === it.picked) state = 'wrong';
+        else state = 'dim';
+        state += ' locked';
+      }
+      var b = optionButton(it, k, state.trim(), function () { pickPractice(k); });
+      if (answered) { b.setAttribute('disabled', ''); b.classList.remove('locked'); }
+      return b;
+    });
+
+    var hintBanner = (!answered && it.hintShown)
+      ? h('div', { class: 'explain', style: 'margin-bottom:14px' },
+          h('b', null, '💡 Gợi ý: '),
+          EXPLAIN[it.q.id] || ('Đã loại bớt 1 phương án gây nhiễu. Hãy chú ý khái niệm trọng tâm ở Chương ' + it.q.ch + ' (Mức ' + it.q.lv + ').'))
+      : null;
+
+    var feedback = null;
+    if (answered) {
+      var isLast = S.i + 1 >= total;
+      if (ok) {
+        feedback = h('div', { class: 'feedback ok' },
+          h('b', null, '✔ Chính xác! (+5 Xu Triết, +10 EXP)'), explainBox(it.q),
+          h('div', { class: 'row', style: 'margin-top:10px' },
+            h('button', { class: 'btn primary', id: 'nextBtn', onclick: nextPractice }, isLast ? 'Xem kết quả' : 'Câu tiếp theo →')));
+      } else {
+        feedback = h('div', { class: 'feedback bad' },
+          h('b', null, '✘ Chưa đúng. Đáp án đúng là ' + LETTERS[cp] + '.'), explainBox(it.q),
+          h('div', { class: 'row', style: 'margin-top:10px' },
+            S.cfg.kind === 'chapter'
+              ? h('button', { class: 'btn primary', id: 'restartBtn', onclick: restartPractice }, '↻ Làm lại từ đầu (xáo ngẫu nhiên)')
+              : null,
+            h('button', { class: 'btn', id: 'nextBtn', onclick: nextPractice }, isLast ? 'Xem kết quả' : (S.cfg.kind === 'chapter' ? 'Bỏ qua, làm tiếp →' : 'Câu tiếp theo →'))));
+      }
+    }
+
+    var hints = [['1-4 / A-D', 'Chọn đáp án'], ['Enter', 'Câu tiếp theo'], ['S', 'Đánh dấu']];
+    if (answered && !ok && S.cfg.kind === 'chapter') hints.push(['R', 'Làm lại từ đầu']);
+
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'hud' },
+        h('div', null, h('b', null, S.cfg.title), S.runs > 1 ? h('span', { class: 'muted' }, ' · lần ' + S.runs) : null),
+        h('button', { class: 'btn ghost', onclick: function () { saveSession(); home(); toast('Đã lưu. Bạn có thể làm tiếp ở Trang chủ.', 'ok'); } }, 'Lưu & thoát')),
+      h('div', { class: 'progress' }, h('span', { style: 'width:' + Math.round(S.i / total * 100) + '%' })),
+      h('div', { class: 'hud' },
+        h('div', { class: 'stats' },
+          h('span', null, 'Câu ', h('b', null, S.i + 1 + '/' + total)),
+          h('span', { class: 'ok-t' }, 'Đúng ', h('b', null, S.right)),
+          h('span', { class: 'bad-t' }, 'Sai ', h('b', null, S.wrong)),
+          h('span', null, 'Chuỗi đúng ', h('b', null, S.streak)))),
+      powerupBar(it, renderPractice),
+      h('div', { class: 'card qcard' },
+        qHeader(it),
+        h('div', { class: 'qtext' }, it.q.q),
+        hintBanner,
+        h('div', { class: 'opts' }, opts),
+        feedback),
+      kbdBar(hints)), scroll);
+    var f = document.getElementById(answered && !ok && S.cfg.kind === 'chapter' ? 'restartBtn' : 'nextBtn');
+    if (f && answered) f.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+  function finishPractice() {
+    var st = stat(S.cfg.key);
+    st.completed++;
+    delete store.sessions.practice[S.cfg.sid];
+    var bonus = awardProgress(25, 30, null, true);
+    save();
+    sfx.win();
+    launchConfetti(30);
+    var total = S.items.length;
+    var perfect = S.wrong === 0;
+    var wrongList = S.wrongIds.map(function (id) { return byId[id]; }).filter(Boolean);
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'card score' },
+        h('div', { class: 'muted' }, S.cfg.title),
+        h('div', { class: 'big' }, S.right + '/' + total),
+        h('p', null, perfect ? 'Tuyệt vời! Bạn làm đúng toàn bộ.' : 'Bạn sai ' + S.wrong + ' câu trong lượt này.'),
+        h('p', { class: 'ok-t' }, '🎁 Thưởng hoàn thành: +' + bonus.xu + ' Xu Triết & +' + bonus.exp + ' EXP'),
+        h('div', { class: 'row', style: 'justify-content:center' },
+          h('button', { class: 'btn primary', onclick: restartPractice }, '↻ Làm lại từ đầu (ngẫu nhiên)'),
+          wrongList.length ? h('button', { class: 'btn', onclick: startWrongBank }, 'Ôn các câu sai') : null,
+          h('button', { class: 'btn', onclick: home }, 'Trang chủ'))),
+      wrongList.length ? h('h2', null, 'Các câu sai trong lượt này') : null,
+      wrongList.map(function (q) { return reviewCard(q, null); })));
+  }
+
+  function startWrongBank() {
+    var ids = wrongIds();
+    if (!ids.length) { toast('Chưa có câu sai nào. Cứ làm tiếp nhé!', 'info'); return; }
+    setNav('navWrong');
+    startPractice({
+      kind: 'wrong', key: 'wrong', sid: 'wrong',
+      title: 'Ôn các câu đã sai (' + ids.length + ')',
+      pool: ids.map(function (id) { return byId[id]; }), ordered: false
+    });
+  }
+
+  /* ---------- Ôn tổng hợp (đề 40 câu) ---------- */
+  function startMix(limitMin) {
+    if (typeof limitMin !== 'number') limitMin = store.settings.mixLimit || 0;
+    setNav('navHome');
+    var size = Math.min(MIX_SIZE, Q.length);
+    var pool = shuffle(Q).slice(0, size);
+    S = { view: 'mix', items: pool.map(makeItem), i: 0, start: Date.now(), submitted: false, limit: limitMin * 60000 };
+    dropMix();
+    renderMix();
+    runMixTimer();
+  }
+  function runMixTimer() {
+    stopTimer();
+    timer = setInterval(function () {
+      var el = document.getElementById('timer');
+      if (!S || S.view !== 'mix' || S.submitted) return;
+      if (el) el.textContent = mixClock();
+      if (S.limit && Date.now() - S.start >= S.limit) {
+        toast('Hết giờ! Bài được nộp tự động.', 'bad');
+        submitMix(true);
+      }
+    }, 1000);
+  }
+  function mixClock() {
+    var used = Date.now() - S.start;
+    return S.limit ? fmtTime(Math.max(0, S.limit - used)) : fmtTime(used);
+  }
+  function pickMix(k) {
+    var it = S.items[S.i];
+    if (it.hiddenOpts && it.hiddenOpts.indexOf(k) >= 0) return;
+    it.picked = k;
+    renderMix(false);
+  }
+  function mixNavDots() {
+    return S.items.map(function (it, i) {
+      var cls = 'nav-dot' + (it.picked !== null ? ' answered' : '') + (i === S.i ? ' current' : '');
+      return h('button', { class: cls, type: 'button', title: 'Câu ' + (i + 1), onclick: function () { S.i = i; renderMix(); } }, i + 1);
+    });
+  }
+  function renderMix(scroll) {
+    saveSession();
+    var it = S.items[S.i];
+    var total = S.items.length;
+    var done = S.items.filter(function (x) { return x.picked !== null; }).length;
+    var opts = [0, 1, 2, 3].map(function (k) {
+      return optionButton(it, k, it.picked === k ? 'selected' : '', function () { pickMix(k); });
+    });
+    var hintBanner = it.hintShown
+      ? h('div', { class: 'explain', style: 'margin-bottom:14px' },
+          h('b', null, '💡 Gợi ý: '),
+          EXPLAIN[it.q.id] || ('Đã loại bớt 1 phương án gây nhiễu. Xem kỹ khái niệm thuộc Chương ' + it.q.ch + '.'))
+      : null;
+
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'hud' },
+        h('div', null, h('b', null, 'Ôn tổng hợp · ' + total + ' câu')),
+        h('div', { class: 'stats' },
+          h('span', { class: S.limit && S.limit - (Date.now() - S.start) < 300000 ? 'bad-t' : null }, S.limit ? '⏳ Còn ' : '⏱ ', h('b', { id: 'timer' }, mixClock())),
+          h('span', null, 'Đã trả lời ', h('b', null, done + '/' + total)))),
+      h('div', { class: 'navgrid' }, mixNavDots()),
+      powerupBar(it, renderMix),
+      h('div', { class: 'card qcard' },
+        qHeader(it, 'Câu ' + (S.i + 1) + '/' + total + ' của đề'),
+        h('div', { class: 'qtext' }, it.q.q),
+        hintBanner,
+        h('div', { class: 'opts' }, opts)),
+      h('div', { class: 'row between', style: 'max-width:900px;margin-inline:auto;width:100%' },
+        h('button', { class: 'btn', disabled: S.i === 0 ? true : null, onclick: function () { S.i--; renderMix(); } }, '← Câu trước'),
+        S.i + 1 < total
+          ? h('button', { class: 'btn', onclick: function () { S.i++; renderMix(); } }, 'Câu sau →')
+          : h('button', { class: 'btn primary', onclick: function () { submitMix(false); } }, 'Nộp bài')),
+      h('div', { class: 'row', style: 'justify-content:center' },
+        h('button', { class: 'btn primary big', onclick: function () { submitMix(false); } }, 'Nộp bài'),
+        h('button', { class: 'btn', onclick: function () { saveSession(); home(); toast('Đã lưu đề. Bạn có thể làm tiếp ở Trang chủ.', 'ok'); } }, 'Lưu & thoát'),
+        h('button', {
+          class: 'btn ghost',
+          onclick: function () {
+            askConfirm({
+              icon: '🗑️',
+              title: 'Bỏ đề thi hiện tại?',
+              message: 'Tiến độ của đề ' + total + ' câu đang làm sẽ bị xoá.',
+              okText: 'Bỏ đề',
+              danger: true
+            }, function () { dropMix(); home(); });
+          }
+        }, 'Bỏ đề')),
+      kbdBar([['1-4 / A-D', 'Chọn đáp án'], ['← / →', 'Chuyển câu'], ['S', 'Đánh dấu']])), scroll);
+  }
+  function submitMix(auto) {
+    var left = S.items.filter(function (x) { return x.picked === null; }).length;
+    var finalize = function () {
+      S.submitted = true; stopTimer(); store.sessions.mix = null;
+      var right = 0;
+      S.items.forEach(function (it) {
+        var ok = it.picked !== null && it.order[it.picked] === it.q.a;
+        if (ok) right++;
+        record(it.q, ok, true);
+      });
+      S.right = right;
+      S.elapsed = S.limit ? Math.min(Date.now() - S.start, S.limit) : Date.now() - S.start;
+      var st = stat('mix'); st.runs++; st.completed++; if (right > st.best) st.best = right;
+      var bonus = awardProgress(right * 2, 50, null, true);
+      S.mixBonus = bonus;
+      save();
+      sfx.win();
+      launchConfetti(34);
+      renderMixResult('all');
+    };
+    if (auto !== true && left > 0) {
+      askConfirm({
+        icon: '📝',
+        title: 'Nộp bài khi chưa làm xong?',
+        message: 'Còn ' + left + ' câu chưa trả lời (sẽ tính là sai). Bạn vẫn muốn nộp bài chứ?',
+        okText: 'Nộp bài ngay'
+      }, finalize);
+      return;
+    }
+    finalize();
+  }
+  function renderMixResult(filter) {
+    var total = S.items.length;
+    var list = S.items.filter(function (it) {
+      var ok = it.picked !== null && it.order[it.picked] === it.q.a;
+      return filter === 'all' || (filter === 'wrong' && !ok);
+    });
+    var score10 = (S.right / total * 10).toFixed(2).replace(/\.?0+$/, '');
+    var dots = S.items.map(function (it, i) {
+      var ok = it.picked !== null && it.order[it.picked] === it.q.a;
+      return h('span', { class: 'nav-dot ' + (ok ? 'r-ok' : 'r-bad'), style: 'display:grid;place-items:center;cursor:default', title: 'Câu ' + (i + 1) }, i + 1);
+    });
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'card score' },
+        h('div', { class: 'muted' }, 'Kết quả ôn tổng hợp · thời gian ' + fmtTime(S.elapsed)),
+        h('div', { class: 'big' }, S.right + '/' + total),
+        h('p', null, 'Quy đổi thang 10: ', h('b', null, score10), ' điểm'),
+        S.mixBonus ? h('p', { class: 'ok-t' }, '🎁 Thưởng nộp bài: +' + S.mixBonus.xu + ' Xu Triết & +' + S.mixBonus.exp + ' EXP') : null,
+        h('div', { class: 'navgrid', style: 'justify-content:center' }, dots),
+        h('div', { class: 'row', style: 'justify-content:center;margin-top:16px' },
+          h('button', { class: 'btn primary', onclick: function () { startMix(); } }, 'Làm đề mới'),
+          h('button', { class: 'btn', onclick: startWrongBank }, 'Ôn các câu sai'),
+          h('button', { class: 'btn', onclick: home }, 'Trang chủ'))),
+      h('div', { class: 'row' },
+        h('h2', { style: 'margin:0' }, 'Xem lại bài làm'),
+        h('span', { class: 'spacer' }),
+        h('button', { class: 'btn' + (filter === 'all' ? ' primary' : ''), onclick: function () { renderMixResult('all'); } }, 'Tất cả'),
+        h('button', { class: 'btn' + (filter === 'wrong' ? ' primary' : ''), onclick: function () { renderMixResult('wrong'); } }, 'Chỉ câu sai')),
+      list.length ? list.map(function (it) { return reviewCard(it.q, it); }) : h('p', { class: 'muted' }, 'Không có câu nào để hiển thị.')));
+  }
+
+  function reviewCard(q, it, extra, highlightKw) {
+    var opts = [0, 1, 2, 3].map(function (k) {
+      var cls = 'opt';
+      var origIdx = it ? it.order[k] : k;
+      if (origIdx === q.a) cls += ' correct';
+      else if (it && it.picked === k) cls += ' wrong';
+      return h('div', { class: cls },
+        h('span', { class: 'key' }, LETTERS[k]),
+        h('span', { class: 'txt' }, highlightKw ? highlightNode(q.o[origIdx], highlightKw) : q.o[origIdx]));
+    });
+    var status = null;
+    if (it) {
+      var ok = it.picked !== null && it.order[it.picked] === q.a;
+      status = h('span', { class: ok ? 'ok-t' : 'bad-t' }, it.picked === null ? '✘ Chưa trả lời' : (ok ? '✔ Đúng' : '✘ Sai'));
+    }
+    return h('div', { class: 'card review-item' },
+      h('div', { class: 'qmeta' },
+        h('span', { class: 'chip' }, 'Chương ' + q.ch + ' · Câu ' + q.n), status,
+        h('span', { class: 'spacer' }), extra, markBtn(q)),
+      h('div', { class: 'qtext' }, highlightKw ? highlightNode(q.q, highlightKw) : q.q),
+      h('div', { class: 'opts' }, opts),
+      explainBox(q));
+  }
+
+  /* ---------- Chuẩn hoá & Tô sáng từ khoá (<mark>) ---------- */
+  function normalize(s) {
+    return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+  }
+
+  function highlightNode(text, rawQuery) {
+    var kw = normalize((rawQuery || '').trim());
+    if (!kw || !text) return text;
+    var normStr = '';
+    var idxMap = [];
+    for (var i = 0; i < text.length; i++) {
+      var chNorm = normalize(text[i]);
+      for (var c = 0; c < chNorm.length; c++) {
+        normStr += chNorm[c];
+        idxMap.push(i);
+      }
+    }
+    var pos = normStr.indexOf(kw);
+    if (pos < 0) return text;
+    var frag = document.createDocumentFragment();
+    var lastOrig = 0;
+    while (pos >= 0) {
+      var startOrig = idxMap[pos];
+      var endOrig = idxMap[pos + kw.length - 1] + 1;
+      if (startOrig > lastOrig) frag.appendChild(document.createTextNode(text.slice(lastOrig, startOrig)));
+      frag.appendChild(h('mark', null, text.slice(startOrig, endOrig)));
+      lastOrig = endOrig;
+      pos = normStr.indexOf(kw, pos + kw.length);
+    }
+    if (lastOrig < text.length) frag.appendChild(document.createTextNode(text.slice(lastOrig)));
+    return frag;
+  }
+
+  /* ---------- ÔN LÝ THUYẾT ---------- */
+  function theoryPage() {
+    stopTimer(); S = null;
+    setNav('navTheory');
+    var all = window.THEORY || [];
+    var chapter = 0;
+    var query = h('input', {
+      class: 'search', type: 'search',
+      placeholder: 'Tìm khái niệm, mẹo nhớ hoặc ví dụ...', 'aria-label': 'Tìm lý thuyết'
+    });
+    var tabs = h('div', { class: 'actions theory-tabs' });
+    var results = h('div', { class: 'stack theory-list' });
+    function render() {
+      results.replaceChildren();
+      var rawKw = query.value.trim();
+      var key = normalize(rawKw);
+      var found = all.filter(function (item) {
+        return (!chapter || item.ch === chapter) &&
+          (!key || normalize(item.title + ' ' + item.summary + ' ' + item.tip + ' ' + item.example + ' ' + item.trap + ' ' + item.keywords).indexOf(key) >= 0);
+      });
+      results.appendChild(h('p', { class: 'muted small' },
+        'Có ' + found.length + ' chủ đề phù hợp. Nội dung cô đọng theo các khái niệm thường xuất hiện trong ngân hàng câu hỏi.'));
+      found.forEach(function (item) {
+        results.appendChild(h('article', { class: 'card theory-card' },
+          h('div', { class: 'eyebrow' }, 'CHƯƠNG ' + item.ch),
+          h('h3', null, highlightNode(item.title, rawKw)),
+          h('p', null, highlightNode(item.summary, rawKw)),
+          h('div', { class: 'theory-block tip' }, h('strong', null, '🧠 Mẹo dễ nhớ'), h('p', null, highlightNode(item.tip, rawKw))),
+          h('div', { class: 'theory-block example' }, h('strong', null, '💡 Ví dụ trực quan'), h('p', null, highlightNode(item.example, rawKw))),
+          h('div', { class: 'theory-block trap' }, h('strong', null, '⚠️ Dễ nhầm'), h('p', null, highlightNode(item.trap, rawKw))),
+          h('div', { class: 'meta small' }, 'Từ khóa: ', highlightNode(item.keywords, rawKw))));
+      });
+      if (!found.length) {
+        results.appendChild(h('div', { class: 'empty-state' },
+          h('div', { class: 'empty-icon' }, '🔍'),
+          h('h3', null, 'Không tìm thấy chủ đề phù hợp'),
+          h('p', null, 'Thử nhập từ khoá ngắn gọn hơn hoặc chọn "Tất cả" để xem toàn bộ chủ đề lý thuyết.'),
+          h('button', { class: 'btn primary', onclick: function () { query.value = ''; render(); } }, 'Xoá bộ lọc tìm kiếm')));
+      }
+    }
+    [0, 1, 2, 3].forEach(function (ch) {
+      var b = h('button', {
+        class: 'btn ' + (chapter === ch ? 'primary' : 'ghost'), type: 'button',
+        onclick: function () {
+          chapter = ch;
+          Array.prototype.forEach.call(tabs.children, function (el) {
+            el.classList.toggle('primary', el.dataset.chapter === String(ch));
+            el.classList.toggle('ghost', el.dataset.chapter !== String(ch));
+          });
+          render();
+        }
+      }, ch ? 'Chương ' + ch : 'Tất cả');
+      b.dataset.chapter = String(ch);
+      tabs.appendChild(b);
+    });
+    query.addEventListener('input', render);
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'card theory-intro' },
+        h('div', { class: 'eyebrow' }, 'HỌC HIỂU · NHỚ LÂU · VẬN DỤNG'),
+        h('h1', null, 'Ôn lý thuyết Triết học Mác – Lênin'),
+        h('p', null, 'Mỗi chủ đề gồm ý cốt lõi, mẹo nhớ nhanh, ví dụ đời sống/kỹ thuật và điểm dễ nhầm khi làm trắc nghiệm.')),
+      h('div', { class: 'row theory-search' }, query),
+      tabs, results));
+    render();
+  }
+
+  /* ---------- Tra cứu ---------- */
+  function browse() {
+    stopTimer(); S = null;
+    setNav('navBrowse');
+    if (!normCache) {
+      normCache = Q.map(function (q) { return normalize(q.q + ' ' + q.o.join(' ')); });
+    }
+    var chSel = h('select', { class: 'search', 'aria-label': 'Lọc theo chương' },
+      h('option', { value: '0' }, 'Tất cả chương'),
+      h('option', { value: '1' }, 'Chương 1'), h('option', { value: '2' }, 'Chương 2'), h('option', { value: '3' }, 'Chương 3'));
+    var input = h('input', {
+      class: 'search', style: 'flex:1;min-width:220px', type: 'search',
+      placeholder: 'Gõ từ khoá không cần dấu (ví dụ: vat chat, giai cap, thuc tien...)', 'aria-label': 'Tìm câu hỏi'
+    });
+    var out = h('div', { class: 'stack' });
+    var run = function () {
+      var rawKw = input.value.trim();
+      var kw = normalize(rawKw);
+      var ch = parseInt(chSel.value, 10);
+      var res = [];
+      for (var i = 0; i < Q.length && res.length < 40; i++) {
+        if (ch && Q[i].ch !== ch) continue;
+        if (kw && normCache[i].indexOf(kw) < 0) continue;
+        res.push(Q[i]);
+      }
+      var nodes = [];
+      if (!kw && !ch) {
+        nodes.push(h('div', { class: 'empty-state' },
+          h('div', { class: 'empty-icon' }, '📚'),
+          h('h3', null, 'Tra cứu nhanh ' + Q.length + ' câu trắc nghiệm'),
+          h('p', null, 'Nhập từ khoá bất kỳ (hỗ trợ gõ không dấu) hoặc chọn chương ở thanh phía trên để xem câu hỏi cùng đáp án chuẩn.')));
+      } else if (!res.length) {
+        nodes.push(h('div', { class: 'empty-state' },
+          h('div', { class: 'empty-icon' }, '🔎'),
+          h('h3', null, 'Không tìm thấy câu hỏi nào'),
+          h('p', null, 'Không có câu hỏi khớp với từ khoá "' + rawKw + '". Thử từ khoá khác hoặc mở rộng sang Tất cả chương.')));
+      } else {
+        nodes.push(h('p', { class: 'muted small' }, 'Hiển thị tối đa 40 kết quả đầu tiên: ' + res.length + ' câu.'));
+        res.forEach(function (q) { nodes.push(reviewCard(q, null, null, rawKw)); });
+      }
+      out.replaceChildren.apply(out, nodes);
+    };
+    var tid = null;
+    input.addEventListener('input', function () { clearTimeout(tid); tid = setTimeout(run, 150); });
+    chSel.addEventListener('change', run);
+    mount(h('div', { class: 'stack' },
+      h('h1', null, 'Tra cứu câu hỏi'),
+      h('div', { class: 'row' }, input, chSel),
+      out));
+    run();
+    input.focus();
+  }
+
+  /* ---------- Câu sai & Đánh dấu ---------- */
+  function markIds() { return Object.keys(store.marks).filter(function (id) { return byId[id]; }); }
+  function markBtn(q) {
+    var b = h('button', {
+      class: 'btn ghost star' + (store.marks[q.id] ? ' on' : ''), type: 'button',
+      title: 'Đánh dấu câu này để xem lại sau (Phím S)', 'aria-label': 'Đánh dấu câu hỏi',
+      onclick: function (e) {
+        e.stopPropagation();
+        if (store.marks[q.id]) {
+          delete store.marks[q.id];
+          toast('Đã bỏ đánh dấu câu hỏi.', 'info');
+        } else {
+          store.marks[q.id] = 1;
+          toast('Đã đánh dấu sao câu hỏi.', 'ok');
+        }
+        save();
+        b.classList.toggle('on', !!store.marks[q.id]);
+        b.textContent = store.marks[q.id] ? '★' : '☆';
+        b.blur();
+      }
+    }, store.marks[q.id] ? '★' : '☆');
+    return b;
+  }
+  function startMarks() {
+    var ids = markIds();
+    if (!ids.length) { toast('Chưa đánh dấu câu nào. Bấm ☆ ở góc câu hỏi để đánh dấu.', 'info'); return; }
+    setNav('navWrong');
+    startPractice({
+      kind: 'marks', key: 'marks', sid: 'marks', title: 'Ôn câu đã đánh dấu (' + ids.length + ')',
+      pool: ids.map(function (id) { return byId[id]; }), ordered: false
+    });
+  }
+  function byOrder(a, b) { return a.ch - b.ch || a.n - b.n; }
+
+  function reviewPage(tab, keepScroll) {
+    stopTimer(); S = null;
+    setNav('navWrong');
+    tab = tab || 'wrong';
+    var isWrong = tab === 'wrong';
+    var list = (isWrong ? wrongIds() : markIds()).map(function (id) { return byId[id]; }).sort(byOrder);
+    var tabBtn = function (t, label, n) {
+      return h('button', { class: 'btn' + (t === tab ? ' primary' : ''), onclick: function () { reviewPage(t); } }, label + ' (' + n + ')');
+    };
+    var cards = list.map(function (q) {
+      var extra = isWrong
+        ? [h('span', { class: 'chip bad-t' }, 'sai ' + store.wrong[q.id] + ' lần'),
+           h('button', {
+             class: 'btn', title: 'Xoá khỏi danh sách câu sai',
+             onclick: function () { delete store.wrong[q.id]; save(); reviewPage('wrong', true); }
+           }, 'Xoá')]
+        : null;
+      return reviewCard(q, null, extra);
+    });
+    mount(h('div', { class: 'stack' },
+      h('h1', null, 'Câu sai & câu đã đánh dấu'),
+      h('div', { class: 'row' }, tabBtn('wrong', 'Câu sai', wrongIds().length), tabBtn('marks', '★ Đã đánh dấu', markIds().length)),
+      list.length
+        ? h('div', { class: 'row' },
+            h('button', { class: 'btn primary', onclick: isWrong ? startWrongBank : startMarks }, '▶ Ôn ' + list.length + ' câu này'),
+            isWrong ? h('button', {
+              class: 'btn',
+              onclick: function () {
+                askConfirm({
+                  icon: '🗑️',
+                  title: 'Xoá toàn bộ danh sách câu sai?',
+                  message: 'Tất cả ' + list.length + ' câu trong mục Câu sai sẽ bị xoá khỏi danh sách ôn lại.',
+                  okText: 'Xoá tất cả',
+                  danger: true
+                }, function () {
+                  store.wrong = {};
+                  save();
+                  toast('Đã xoá toàn bộ danh sách câu sai.', 'info');
+                  reviewPage('wrong', true);
+                });
+              }
+            }, 'Xoá tất cả') : null)
+        : null,
+      isWrong && list.length ? h('p', { class: 'muted small' }, 'Mẹo: Làm đúng một câu từng sai ở bất kỳ chế độ nào sẽ tự động xoá câu đó khỏi danh sách.') : null,
+      list.length ? cards : h('div', { class: 'empty-state' },
+        h('div', { class: 'empty-icon' }, isWrong ? '🎉' : '⭐'),
+        h('h3', null, isWrong ? 'Chưa có câu sai nào!' : 'Chưa có câu nào được đánh dấu'),
+        h('p', null, isWrong ? 'Bạn đang giữ phong độ rất tốt. Hãy tiếp tục luyện tập theo chương hoặc thử sức với đề 40 câu.' : 'Trong lúc làm bài hoặc tra cứu, bấm nút ☆ ở góc thẻ câu hỏi để lưu lại những câu quan trọng.'),
+        h('button', { class: 'btn primary', onclick: home }, 'Về trang chủ ôn bài'))),
+      keepScroll ? false : true);
+  }
+
+  /* ==========================================================================
+   * 🏪 CỬA HÀNG XU TRIẾT (MUA BACKGROUND, BẢNG MÀU, KHUNG THẺ, DANH HIỆU & VẬT PHẨM)
+   * ========================================================================== */
+  function shopPage(activeTab) {
+    stopTimer(); S = null;
+    setNav('navShop');
+    activeTab = activeTab || 'bg';
+
+    var tabsMeta = [
+      { id: 'bg', label: '🎨 Hình nền (Background)' },
+      { id: 'palette', label: '🖌️ Bảng màu' },
+      { id: 'frame', label: '🖼️ Khung thẻ bài' },
+      { id: 'title', label: '🏅 Danh hiệu' },
+      { id: 'item', label: '🎒 Vật phẩm trợ giúp' }
+    ];
+
+    var tabBtns = tabsMeta.map(function (t) {
+      return h('button', {
+        class: 'btn ' + (t.id === activeTab ? 'primary' : 'ghost'),
+        onclick: function () { shopPage(t.id); }
+      }, t.label);
+    });
+
+    var list = SHOP_CATALOG[activeTab] || [];
+    var cards = list.map(function (entry) {
+      if (activeTab === 'item') {
+        var count = (store.inventory.items && store.inventory.items[entry.id]) || 0;
+        var canBuy = store.economy.xu >= entry.price;
+        var buyItem = function () {
+          if (store.economy.xu < entry.price) {
+            toast('Không đủ Xu Triết! Hãy làm bài hoặc chơi Gameshow để kiếm thêm.', 'bad');
+            return;
+          }
+          store.economy.xu -= entry.price;
+          store.inventory.items[entry.id] = count + 1;
+          sfx.ok();
+          save();
+          toast('Đã mua "' + entry.name + '" (-' + entry.price + ' Xu Triết)!', 'ok');
+          shopPage('item');
+        };
+        var useNow = function () {
+          if (count <= 0) return;
+          if (entry.id === 'x2') {
+            store.inventory.items.x2 = count - 1;
+            var baseTime = isX2Active() ? store.buffs.x2Until : Date.now();
+            store.buffs.x2Until = baseTime + 15 * 60 * 1000;
+            sfx.win();
+            save();
+            toast('⚡ Đã kích hoạt Thẻ x2 Xu Triết & EXP trong 15 phút!', 'ok');
+            shopPage('item');
+          } else if (entry.id === 'shield') {
+            if (store.buffs.shieldActive) {
+              toast('Bạn đang có sẵn Khiên Giữ Chuỗi đang kích hoạt rồi!', 'info');
+              return;
+            }
+            store.inventory.items.shield = count - 1;
+            store.buffs.shieldActive = true;
+            sfx.ok();
+            save();
+            toast('🛡️ Đã kích hoạt Khiên Giữ Chuỗi cho lần ôn bài tiếp theo!', 'ok');
+            shopPage('item');
+          }
+        };
+
+        return h('div', { class: 'card shop-item' },
+          h('div', { class: 'shop-preview item-card' }, entry.icon),
+          h('div', { class: 'row between' },
+            h('h3', { style: 'margin:0' }, entry.name),
+            h('span', { class: 'chip' }, 'Đang có: ' + count)),
+          h('p', { class: 'muted small', style: 'margin:0' }, entry.desc),
+          h('div', { class: 'shop-actions' },
+            h('button', {
+              class: 'btn ' + (canBuy ? 'gold' : ''),
+              onclick: buyItem
+            }, '🪙 Mua (' + entry.price + ' Xu)'),
+            (entry.id === 'x2' || entry.id === 'shield') && count > 0
+              ? h('button', { class: 'btn primary', onclick: useNow }, '⚡ Dùng ngay')
+              : null));
+      }
+
+      var invMap = { bg: 'bgs', palette: 'palettes', frame: 'frames', title: 'titles' };
+      var eqMap = { bg: 'bg', palette: 'palette', frame: 'frame', title: 'title' };
+      var ownedList = store.inventory[invMap[activeTab]] || [];
+      var owned = ownedList.indexOf(entry.id) >= 0;
+      var equipped = store.equipped[eqMap[activeTab]] === entry.id;
+
+      var previewEl = activeTab === 'title'
+        ? h('div', { class: 'shop-preview title-card' }, '🏅 ' + entry.name)
+        : h('div', { class: 'shop-preview ' + entry.preview }, entry.name);
+
+      var equipFn = function () {
+        store.equipped[eqMap[activeTab]] = entry.id;
+        applyCosmetics();
+        save();
+        toast('✔ Đã trang bị "' + entry.name + '"!', 'ok');
+        shopPage(activeTab);
+      };
+
+      var buyFn = function () {
+        if (store.economy.xu < entry.price) {
+          toast('Không đủ Xu Triết! Cần ' + entry.price + ' Xu Triết.', 'bad');
+          return;
+        }
+        store.economy.xu -= entry.price;
+        ownedList.push(entry.id);
+        store.equipped[eqMap[activeTab]] = entry.id;
+        applyCosmetics();
+        sfx.win();
+        launchConfetti(26);
+        save();
+        toast('🎉 Mua & trang bị thành công "' + entry.name + '"!', 'ok');
+        shopPage(activeTab);
+      };
+
+      return h('div', { class: 'card shop-item' + (equipped ? ' equipped' : '') },
+        previewEl,
+        h('div', { class: 'row between' },
+          h('h3', { style: 'margin:0' }, entry.name),
+          equipped
+            ? h('span', { class: 'chip ok-t' }, '✔ Đang dùng')
+            : (owned ? h('span', { class: 'chip' }, 'Đã sở hữu') : h('span', { class: 'chip' }, '🪙 ' + entry.price + ' Xu'))),
+        h('p', { class: 'muted small', style: 'margin:0' }, entry.desc),
+        h('div', { class: 'shop-actions' },
+          equipped
+            ? h('button', { class: 'btn', disabled: true }, 'Đang trang bị')
+            : (owned
+                ? h('button', { class: 'btn primary', onclick: equipFn }, '✨ Trang bị')
+                : h('button', { class: 'btn gold', onclick: buyFn }, '🪙 Mua (' + entry.price + ' Xu)')),
+          activeTab !== 'title'
+            ? h('button', { class: 'btn ghost small', onclick: function () { previewCosmetic(activeTab, entry.id, entry.name); } }, '👁 Xem thử')
+            : null));
+    });
+
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'card shop-hero' },
+        h('div', null,
+          h('div', { class: 'eyebrow' }, 'CỬA HÀNG ĐỔI THƯỞNG XU TRIẾT'),
+          h('h1', { style: 'margin:0 0 6px' }, '🏪 Cửa hàng Giao diện & Vật phẩm'),
+          h('p', { class: 'muted', style: 'margin:0' }, 'Dùng Xu Triết kiếm được từ luyện tập, nhiệm vụ ngày và Gameshow để mở khóa hình nền (Background), bảng màu, khung thẻ câu hỏi và vật phẩm trợ giúp.')),
+        h('div', { class: 'row' },
+          h('span', { class: 'xu-pill', style: 'font-size:1rem;padding:8px 16px' }, '🪙 Số dư: ' + store.economy.xu.toLocaleString() + ' Xu Triết'),
+          h('button', { class: 'btn ghost', onclick: home }, '← Trang chủ'))),
+      h('div', { class: 'shop-tabs' }, tabBtns),
+      h('div', { class: 'shop-grid' }, cards)));
+  }
+
+  /* ==========================================================================
+   * 📖 HƯỚNG DẪN SỬ DỤNG & QUẢN LÝ THÊM / XÓA CÂU HỎI
+   * ========================================================================== */
+  function guidePage(activeTab) {
+    stopTimer(); S = null;
+    setNav('navGuide');
+    activeTab = activeTab || 'usage';
+
+    var tabs = h('div', { class: 'actions' },
+      h('button', { class: 'btn ' + (activeTab === 'usage' ? 'primary' : 'ghost'), onclick: function () { guidePage('usage'); } }, '📖 Hướng dẫn sử dụng Web'),
+      h('button', { class: 'btn ' + (activeTab === 'manage' ? 'primary' : 'ghost'), onclick: function () { guidePage('manage'); } }, '➕ Thêm / Xóa câu hỏi trên Web'),
+      h('button', { class: 'btn ' + (activeTab === 'code' ? 'primary' : 'ghost'), onclick: function () { guidePage('code'); } }, '💻 Sửa file questions.js thủ công'));
+
+    var body = null;
+
+    if (activeTab === 'usage') {
+      body = h('div', { class: 'stack' },
+        h('div', { class: 'card stack' },
+          h('h2', null, '1. Lộ trình ôn tập & kiếm Xu Triết hiệu quả'),
+          h('p', null, '• ', h('b', null, 'Ôn theo chương (Trang chủ): '), 'Chọn Chương 1, 2 hoặc 3 (hoặc từng mục nhỏ) để luyện từng câu có phản hồi đúng/sai ngay lập tức. Mỗi câu đúng nhận ', h('b', null, '+5 Xu Triết & +10 EXP'), '.'),
+          h('p', null, '• ', h('b', null, 'Đề thi tổng hợp 40 câu: '), 'Trộn ngẫu nhiên 40 câu từ toàn bộ ngân hàng, có đồng hồ tính giờ (20/30/45 phút) và quy đổi điểm thang 10.'),
+          h('p', null, '• ', h('b', null, 'Nhiệm vụ ngày & Cửa hàng: '), 'Hoàn thành 4 nhiệm vụ mỗi ngày ở Trang chủ để nhận thưởng lớn, sau đó vào ', h('b', null, '🏪 Cửa hàng'), ' mua và thay đổi hình nền (Background), bảng màu, khung thẻ câu hỏi hoặc thẻ trợ giúp 50:50 / Gợi ý / x2 Xu.'),
+          h('p', null, '• ', h('b', null, 'Đấu trường 4 Gameshow: '), 'Chơi Ai Là Triệu Phú, Đường Lên Đỉnh Olympia, Chiếc Nón Kỳ Diệu và Jeopardy để vừa ôn kiến thức vừa cày Xu Triết.'),
+          h('p', null, '• ', h('b', null, 'Tự động gom Câu sai & Đánh dấu sao (★): '), 'Mọi câu làm sai tự động lưu vào mục Câu sai và sẽ tự xóa khỏi danh sách khi bạn làm đúng lại ở bất kỳ chế độ nào.')),
+        h('div', { class: 'card stack' },
+          h('h2', null, '2. Phím tắt bàn phím & Sao lưu dữ liệu'),
+          h('p', null, '• ', h('kbd', null, '1'), '–', h('kbd', null, '4'), ' hoặc ', h('kbd', null, 'A'), '–', h('kbd', null, 'D'), ': Chọn nhanh đáp án.'),
+          h('p', null, '• ', h('kbd', null, 'Enter'), ' / ', h('kbd', null, 'Space'), ': Chuyển sang câu tiếp theo hoặc quay nón.'),
+          h('p', null, '• ', h('kbd', null, '←'), ' / ', h('kbd', null, '→'), ': Chuyển câu trước/sau trong đề tổng hợp 40 câu.'),
+          h('p', null, '• ', h('kbd', null, 'S'), ': Gắn/bỏ dấu sao câu hỏi hiện tại · ', h('kbd', null, 'R'), ': Làm lại từ đầu khi chọn sai.'),
+          h('p', null, '• ', h('b', null, 'Sao lưu sang máy khác: '), 'Vào ', h('b', null, '⚙ Cài đặt'), ' → bấm ', h('b', null, '⬇ Xuất file sao lưu (.json)'), ' để lưu toàn bộ tiến độ, Xu Triết, Background đã mua và các câu hỏi bạn tự thêm.')));
+    } else if (activeTab === 'manage') {
+      var chSel = h('select', { class: 'search' },
+        h('option', { value: '1' }, 'Chương 1: Khái luận Triết học'),
+        h('option', { value: '2' }, 'Chương 2: Chủ nghĩa duy vật biện chứng'),
+        h('option', { value: '3' }, 'Chương 3: Chủ nghĩa duy vật lịch sử'));
+      var lvSel = h('select', { class: 'search' },
+        h('option', { value: '1' }, 'Mức 1 (Dễ)'),
+        h('option', { value: '2' }, 'Mức 2 (Trung bình)'),
+        h('option', { value: '3' }, 'Mức 3 (Khá)'),
+        h('option', { value: '4' }, 'Mức 4 (Vận dụng)'),
+        h('option', { value: '5' }, 'Mức 5 (Nâng cao)'));
+      var qInput = h('textarea', { placeholder: 'Nhập nội dung câu hỏi trắc nghiệm mới...' });
+      var optInputs = [0, 1, 2, 3].map(function (idx) {
+        return h('input', { class: 'search', type: 'text', placeholder: 'Nhập đáp án ' + LETTERS[idx] + '...' });
+      });
+      var ansSel = h('select', { class: 'search' },
+        h('option', { value: '0' }, 'Đáp án đúng: A'),
+        h('option', { value: '1' }, 'Đáp án đúng: B'),
+        h('option', { value: '2' }, 'Đáp án đúng: C'),
+        h('option', { value: '3' }, 'Đáp án đúng: D'));
+      var expInput = h('input', { class: 'search', type: 'text', placeholder: 'Giải thích ngắn (không bắt buộc)...' });
+
+      var addCustomQuestion = function () {
+        var qText = qInput.value.trim();
+        var opts = optInputs.map(function (inp) { return inp.value.trim(); });
+        if (!qText || opts.some(function (x) { return !x; })) {
+          toast('Vui lòng nhập đầy đủ nội dung câu hỏi và cả 4 đáp án A, B, C, D.', 'bad');
+          return;
+        }
+        var ch = parseInt(chSel.value, 10) || 1;
+        var lv = parseInt(lvSel.value, 10) || 1;
+        var ans = parseInt(ansSel.value, 10) || 0;
+        var maxN = Q.filter(function (x) { return x.ch === ch; }).reduce(function (m, x) { return Math.max(m, x.n || 0); }, 0);
+        var newId = 'custom-' + Date.now();
+        var item = {
+          id: newId,
+          ch: ch,
+          n: maxN + 1,
+          lv: lv,
+          q: qText,
+          o: opts,
+          a: ans,
+          explain: expInput.value.trim()
+        };
+        store.customQuestions.push(item);
+        rebuildQuestionBank();
+        save();
+        sfx.ok();
+        toast('✔ Đã thêm câu hỏi mới vào Chương ' + ch + ' (Câu ' + item.n + ')!', 'ok');
+        guidePage('manage');
+      };
+
+      // Tìm & Xóa/Ẩn câu hỏi có sẵn trong ngân hàng
+      var delSearch = h('input', {
+        class: 'search', style: 'flex:1;min-width:220px', type: 'search',
+        placeholder: 'Nhập mã câu (vd: c1-5) hoặc từ khoá để tìm câu muốn xoá...'
+      });
+      var delResults = h('div', { class: 'stack' });
+      var runDelSearch = function () {
+        var raw = delSearch.value.trim();
+        var kw = normalize(raw);
+        delResults.replaceChildren();
+        if (!kw) return;
+        var hits = Q.filter(function (x) {
+          return normalize(x.id + ' ' + x.q).indexOf(kw) >= 0;
+        }).slice(0, 8);
+        if (!hits.length) {
+          delResults.appendChild(h('p', { class: 'muted small' }, 'Không tìm thấy câu hỏi khớp với "' + raw + '".'));
+          return;
+        }
+        hits.forEach(function (item) {
+          var isCustom = String(item.id).indexOf('custom-') === 0;
+          delResults.appendChild(h('div', { class: 'custom-q-item' },
+            h('div', { class: 'row between' },
+              h('span', { class: 'chip' }, 'Chương ' + item.ch + ' · Câu ' + item.n + ' (' + item.id + ')' + (isCustom ? ' · Tự thêm' : '')),
+              h('button', {
+                class: 'btn danger small',
+                onclick: function () {
+                  askConfirm({
+                    icon: '🗑️',
+                    title: 'Xoá câu hỏi này khỏi ngân hàng ôn tập?',
+                    message: item.q,
+                    okText: 'Xoá câu hỏi',
+                    danger: true
+                  }, function () {
+                    if (isCustom) {
+                      store.customQuestions = store.customQuestions.filter(function (c) { return c.id !== item.id; });
+                    } else {
+                      store.deletedIds[item.id] = 1;
+                    }
+                    delete store.wrong[item.id];
+                    delete store.marks[item.id];
+                    rebuildQuestionBank();
+                    save();
+                    toast('Đã xoá câu hỏi khỏi danh sách ôn tập.', 'info');
+                    guidePage('manage');
+                  });
+                }
+              }, '🗑 Xóa câu này')),
+            h('div', { class: 'small' }, item.q)));
+        });
+      };
+      delSearch.addEventListener('input', runDelSearch);
+
+      var deletedCount = Object.keys(store.deletedIds || {}).length;
+      var customCards = (store.customQuestions || []).map(function (item) {
+        return h('div', { class: 'custom-q-item' },
+          h('div', { class: 'row between' },
+            h('span', { class: 'chip' }, 'Chương ' + item.ch + ' · Câu ' + item.n + ' · Mức ' + item.lv),
+            h('button', {
+              class: 'btn danger small',
+              onclick: function () {
+                store.customQuestions = store.customQuestions.filter(function (c) { return c.id !== item.id; });
+                rebuildQuestionBank();
+                save();
+                toast('Đã xoá câu hỏi tự thêm.', 'info');
+                guidePage('manage');
+              }
+            }, '🗑 Xóa')),
+          h('b', null, item.q),
+          h('div', { class: 'small ok-t' }, 'Đáp án đúng: ' + LETTERS[item.a] + '. ' + item.o[item.a]));
+      });
+
+      body = h('div', { class: 'stack' },
+        h('div', { class: 'card stack' },
+          h('h2', null, '➕ Thêm câu hỏi trắc nghiệm mới'),
+          h('p', { class: 'muted small' }, 'Câu hỏi thêm tại đây sẽ được tích hợp ngay vào Luyện tập theo chương, Đề 40 câu, Tra cứu và cả 4 Gameshow.'),
+          h('div', { class: 'q-form-grid' },
+            h('label', { class: 'field-label' }, 'Chọn chương', chSel),
+            h('label', { class: 'field-label' }, 'Độ khó', lvSel),
+            h('label', { class: 'field-label wide' }, 'Nội dung câu hỏi', qInput),
+            h('label', { class: 'field-label' }, 'Đáp án A', optInputs[0]),
+            h('label', { class: 'field-label' }, 'Đáp án B', optInputs[1]),
+            h('label', { class: 'field-label' }, 'Đáp án C', optInputs[2]),
+            h('label', { class: 'field-label' }, 'Đáp án D', optInputs[3]),
+            h('label', { class: 'field-label' }, 'Chọn đáp án đúng', ansSel),
+            h('label', { class: 'field-label' }, 'Giải thích (tuỳ chọn)', expInput)),
+          h('div', { class: 'actions' },
+            h('button', { class: 'btn primary', onclick: addCustomQuestion }, '➕ Thêm câu hỏi vào ngân hàng'))),
+
+        h('div', { class: 'card stack' },
+          h('div', { class: 'row between' },
+            h('h2', { style: 'margin:0' }, '🗑 Xóa / Ẩn câu hỏi bất kỳ'),
+            deletedCount ? h('button', {
+              class: 'btn small',
+              onclick: function () {
+                store.deletedIds = {};
+                rebuildQuestionBank();
+                save();
+                toast('Đã khôi phục ' + deletedCount + ' câu hỏi gốc.', 'ok');
+                guidePage('manage');
+              }
+            }, '↻ Khôi phục ' + deletedCount + ' câu gốc đã ẩn') : null),
+          h('p', { class: 'muted small' }, 'Tìm theo từ khoá hoặc mã câu (ví dụ: c1-1, c2-15) để xoá câu hỏi trùng hoặc không dùng đến.'),
+          h('div', { class: 'row' }, delSearch),
+          delResults),
+
+        h('div', { class: 'card stack' },
+          h('h2', null, '📋 Danh sách câu hỏi bạn đã tự thêm (' + customCards.length + ')'),
+          customCards.length ? customCards : h('p', { class: 'muted small' }, 'Chưa có câu hỏi tự thêm nào. Hãy điền biểu mẫu phía trên để thêm mới.')));
+    } else {
+      var sampleSnippet = '{\n  "lv": 1,\n  "id": "c1-96",\n  "ch": 1,\n  "n": 96,\n  "q": "Nội dung câu hỏi trắc nghiệm?",\n  "o": [\n    "Phương án A",\n    "Phương án B",\n    "Phương án C",\n    "Phương án D"\n  ],\n  "a": 0\n}';
+      body = h('div', { class: 'card stack' },
+        h('h2', null, '💻 Cách thêm / xóa câu hỏi vĩnh viễn trong mã nguồn GitHub'),
+        h('p', null, 'Nếu bạn muốn cập nhật trực tiếp vào repository GitHub để mọi người truy cập đều thấy ngân hàng câu hỏi mới nhất, hãy mở file ', h('b', null, 'questions.js'), ':'),
+        h('p', null, '1. ', h('b', null, 'Thêm câu hỏi mới: '), 'Mở ', h('code', null, 'questions.js'), ', kéo xuống cuối mảng ', h('code', null, 'window.QUESTIONS = [ ... ]'), ' và thêm một đối tượng theo đúng cấu trúc sau (lưu ý ', h('code', null, '"a"'), ' là chỉ số đáp án đúng: ', h('code', null, '0'), '=A, ', h('code', null, '1'), '=B, ', h('code', null, '2'), '=C, ', h('code', null, '3'), '=D):'),
+        h('pre', { class: 'guide-code' }, sampleSnippet),
+        h('p', null, '2. ', h('b', null, 'Xóa câu hỏi: '), 'Tìm khối ', h('code', null, '{"lv":...,"id":"cX-Y",...}'), ' tương ứng trong ', h('code', null, 'questions.js'), ' và xoá trọn vẹn từ dấu ', h('code', null, '{'), ' đến dấu ', h('code', null, '},'), ' của câu đó.'),
+        h('p', null, '3. ', h('b', null, 'Thêm giải thích đáp án: '), 'Mở file ', h('code', null, 'explain.js'), ' và thêm dòng ', h('code', null, '"c1-96": "Nội dung giải thích...",'), ' theo đúng mã ', h('code', null, 'id'), ' của câu hỏi.'));
+    }
+
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'hud' },
+        h('h1', { style: 'margin:0' }, '📖 Hướng dẫn & Quản lý câu hỏi'),
+        h('button', { class: 'btn ghost', onclick: home }, '← Trang chủ')),
+      tabs,
+      body));
+  }
+
+  /* ---------- Thống kê & Biểu đồ Analytics ---------- */
+  function barRow(label, a, b, extra) {
+    var pct = b ? Math.round(a / b * 100) : 0;
+    return h('div', { class: 'barrow' },
+      h('div', { class: 'row between small' }, h('span', null, label), h('span', { class: 'muted' }, a + '/' + b + ' (' + pct + '%)' + (extra || ''))),
+      h('div', { class: 'progress' }, h('span', { style: 'width:' + pct + '%' })));
+  }
+
+  function svgRingCard(ch, seen, total) {
+    var pct = total ? Math.round(seen / total * 100) : 0;
+    var r = 25;
+    var circ = 2 * Math.PI * r;
+    var offset = circ * (1 - pct / 100);
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('class', 'ring-svg');
+    svg.setAttribute('viewBox', '0 0 64 64');
+    var bg = document.createElementNS(ns, 'circle');
+    bg.setAttribute('class', 'ring-bg');
+    bg.setAttribute('cx', '32'); bg.setAttribute('cy', '32'); bg.setAttribute('r', String(r));
+    var fg = document.createElementNS(ns, 'circle');
+    fg.setAttribute('class', 'ring-fg');
+    fg.setAttribute('cx', '32'); fg.setAttribute('cy', '32'); fg.setAttribute('r', String(r));
+    fg.setAttribute('stroke-dasharray', circ.toFixed(2));
+    fg.setAttribute('stroke-dashoffset', offset.toFixed(2));
+    svg.appendChild(bg);
+    svg.appendChild(fg);
+
+    return h('div', { class: 'ring-card' },
+      svg,
+      h('div', { class: 'ring-info' },
+        h('div', { class: 'ring-pct' }, pct + '% · ' + seen + '/' + total),
+        h('div', { class: 'ring-title' }, 'Chương ' + ch + ': ' + CHAPTERS[ch].title)));
+  }
+
+  function buildHeatmapCard() {
+    var days = 84;
+    var cells = [];
+    var totalRecent = 0;
+    for (var offset = -(days - 1); offset <= 0; offset++) {
+      var k = dateKey(offset);
+      var cnt = store.activity[k] || 0;
+      totalRecent += cnt;
+      var lv = cnt === 0 ? 0 : (cnt <= 5 ? 1 : (cnt <= 15 ? 2 : (cnt <= 30 ? 3 : 4)));
+      cells.push(h('div', {
+        class: 'hm-cell hm-' + lv,
+        title: formatDateVN(k) + ': ' + cnt + ' lượt trả lời'
+      }));
+    }
+    return h('div', { class: 'card stack' },
+      h('div', { class: 'row between' },
+        h('h3', { style: 'margin:0' }, 'Lịch sử hoạt động 12 tuần gần nhất'),
+        h('span', { class: 'chip' }, totalRecent + ' lượt trả lời trong 84 ngày')),
+      h('div', { class: 'heatmap-wrap' },
+        h('div', { class: 'heatmap-grid' }, cells)),
+      h('div', { class: 'heatmap-legend' },
+        h('span', null, 'Ít'),
+        h('span', { class: 'hm-cell hm-0' }),
+        h('span', { class: 'hm-cell hm-1' }),
+        h('span', { class: 'hm-cell hm-2' }),
+        h('span', { class: 'hm-cell hm-3' }),
+        h('span', { class: 'hm-cell hm-4' }),
+        h('span', null, 'Nhiều')));
+  }
+
+  function statsPage() {
+    stopTimer(); S = null;
+    setNav('navStats');
+    var seenAll = Q.filter(function (q) { return store.seen[q.id]; }).length;
+    var pctAll = Q.length ? Math.round(seenAll / Q.length * 100) : 0;
+    var curStreak = effectiveStreak();
+    var bestStreak = store.streak.best || 0;
+    var mx = stat('mix'), mil = stat('millionaire'), oly = stat('olympia'), wheel = stat('wheel'), jeopardy = stat('jeopardy');
+    var mixScore10 = mx.best ? (mx.best / MIX_SIZE * 10).toFixed(2).replace(/\.?0+$/, '') : '0';
+
+    var rings = [1, 2, 3].map(function (ch) {
+      var list = chapterQs(ch);
+      var seen = list.filter(function (q) { return store.seen[q.id]; }).length;
+      return svgRingCard(ch, seen, list.length);
+    });
+
+    var blocks = [1, 2, 3].map(function (ch) {
+      var list = chapterQs(ch);
+      var rows = CHAPTERS[ch].sections.map(function (s) {
+        var pool = list.filter(function (q) { return q.n >= s.from && q.n <= s.to; });
+        var seen = pool.filter(function (q) { return store.seen[q.id]; }).length;
+        var wr = pool.filter(function (q) { return store.wrong[q.id]; }).length;
+        return barRow(s.name, seen, pool.length, wr ? ' · đang sai ' + wr : '');
+      });
+      var st = stat('ch' + ch);
+      return h('div', { class: 'card stack' },
+        h('h3', null, 'Chương ' + ch + ': ' + CHAPTERS[ch].title),
+        h('div', { class: 'muted small' }, 'Đã bắt đầu ôn ' + st.runs + ' lần · hoàn thành ' + st.completed + ' lần · chuỗi đúng dài nhất ' + st.bestStreak),
+        rows);
+    });
+
+    var top = wrongIds().sort(function (a, b) { return store.wrong[b] - store.wrong[a]; }).slice(0, 10).map(function (id) {
+      var q = byId[id];
+      return h('div', { class: 'toprow' },
+        h('span', { class: 'chip' }, 'C' + q.ch + '.' + q.n),
+        h('span', { class: 'toptxt', title: q.q }, q.q),
+        h('span', { class: 'bad-t small', style: 'white-space:nowrap;font-weight:700' }, 'sai ' + store.wrong[id] + ' lần'));
+    });
+
+    mount(h('div', { class: 'stack' },
+      h('h1', null, 'Thống kê tiến độ học tập'),
+
+      h('div', { class: 'kpi-grid' },
+        h('div', { class: 'kpi-card' },
+          h('span', { class: 'kpi-label' }, 'Độ phủ ngân hàng'),
+          h('span', { class: 'kpi-val' }, pctAll + '%'),
+          h('span', { class: 'kpi-sub' }, seenAll + '/' + Q.length + ' câu đã làm đúng')),
+        h('div', { class: 'kpi-card' },
+          h('span', { class: 'kpi-label' }, 'Cấp độ & Xu Triết'),
+          h('span', { class: 'kpi-val' }, 'Lv.' + store.economy.level),
+          h('span', { class: 'kpi-sub' }, '🪙 ' + store.economy.xu.toLocaleString() + ' Xu hiện có')),
+        h('div', { class: 'kpi-card' },
+          h('span', { class: 'kpi-label' }, 'Chuỗi ngày học'),
+          h('span', { class: 'kpi-val' }, '🔥 ' + curStreak + ' ngày'),
+          h('span', { class: 'kpi-sub' }, 'Kỷ lục: ' + bestStreak + ' ngày liên tiếp')),
+        h('div', { class: 'kpi-card' },
+          h('span', { class: 'kpi-label' }, 'Kỷ lục thi thử'),
+          h('span', { class: 'kpi-val' }, mx.best ? (mx.best + '/' + MIX_SIZE) : '—'),
+          h('span', { class: 'kpi-sub' }, mx.best ? ('Thang 10: ' + mixScore10 + ' điểm') : 'Chưa làm đề tổng hợp'))),
+
+      buildHeatmapCard(),
+
+      h('div', { class: 'card stack' },
+        h('h3', { style: 'margin:0' }, 'Tỷ lệ nắm vững theo 3 chương'),
+        h('div', { class: 'ring-grid' }, rings),
+        h('div', { class: 'muted small' },
+          'Kỷ lục Gameshow — Triệu phú: ' + (mil.best ? mil.best.toLocaleString() + ' đ' : 'Chưa chơi') +
+          ' · Olympia: ' + oly.best + ' điểm' +
+          ' · Chiếc Nón: ' + wheel.best + ' điểm' +
+          ' · Jeopardy: ' + jeopardy.best + ' điểm')),
+
+      blocks,
+
+      h('div', { class: 'card stack' },
+        h('h3', null, 'Top 10 câu hay sai nhất'),
+        top.length ? top : h('p', { class: 'muted' }, 'Chưa có dữ liệu câu sai.'))));
+  }
+
+  /* ==========================================================================
+   * 🏆 ĐẤU TRƯỜNG GAMESHOW TRUYỀN HÌNH (THƯỞNG XU TRIẾT & EXP)
+   * ========================================================================== */
+  function gameMenu() {
+    stopTimer(); S = null;
+    setNav('navGame');
+    var mil = stat('millionaire'), oly = stat('olympia'), wheel = stat('wheel'), jeopardy = stat('jeopardy');
+    mount(h('div', { class: 'stack' },
+      h('button', { class: 'btn ghost', style: 'align-self:flex-start', onclick: home }, '← Trang chủ'),
+      h('h1', null, '📺 Đấu Trường Gameshow Triết Học'),
+      h('p', { class: 'muted' }, 'Hoàn thành bất kỳ gameshow nào để nhận thưởng Xu Triết & EXP dùng mở khóa Background và vật phẩm trong Cửa hàng!'),
+      h('div', { class: 'grid game-grid' },
+        gameCard('🏆 Ai Là Triệu Phú', '15 câu hỏi tăng dần độ khó, thang tiền thưởng, 3 quyền trợ giúp. Thưởng tới +300 Xu Triết.',
+          mil.best ? 'Kỷ lục: ' + mil.best.toLocaleString() + ' VNĐ · ' + mil.runs + ' lượt' : 'Chưa chơi', startMillionaire),
+        gameCard('🏔️ Đường Lên Đỉnh Olympia', 'Đủ 4 phần: Khởi động, Vượt chướng ngại vật, Tăng tốc và Về đích. Thưởng Xu theo điểm số.',
+          oly.best ? 'Kỷ lục: ' + oly.best + ' điểm · ' + oly.runs + ' lượt' : 'Chưa chơi', startOlympia),
+        gameCard('🎡 Chiếc Nón Kỳ Diệu', 'Quay vòng nhận điểm thưởng/phạt và trả lời câu hỏi ngẫu nhiên. Thưởng tới +180 Xu Triết.',
+          wheel.best ? 'Kỷ lục: ' + wheel.best + ' điểm · ' + wheel.runs + ' lượt' : 'Chưa chơi', startWheel),
+        gameCard('🟦 Jeopardy Triết Học', 'Chọn ô điểm trên bảng chủ đề. Đúng cộng điểm, sai trừ điểm. Thưởng tới +220 Xu Triết.',
+          jeopardy.best ? 'Kỷ lục: ' + jeopardy.best + ' điểm · ' + jeopardy.runs + ' lượt' : 'Chưa chơi', startJeopardy))));
+  }
+
+  function gameCard(title, desc, meta, fn) {
+    return h('div', { class: 'card gcard' },
+      h('h3', null, title), h('p', { class: 'muted small' }, desc),
+      meta ? h('div', { class: 'meta small' }, meta) : null,
+      h('div', { class: 'actions' }, h('button', { class: 'btn primary', onclick: fn }, 'Bắt đầu tham gia')));
+  }
+
+  /* ---------- GAMESHOW 1: AI LÀ TRIỆU PHÚ ---------- */
+  var MIL_PRIZES = [
+    200000, 400000, 600000, 1000000, 2000000,
+    3000000, 6000000, 10000000, 14000000, 22000000,
+    30000000, 40000000, 60000000, 85000000, 150000000
+  ];
+
+  function startMillionaire() {
+    stopTimer();
+    setNav('navGame');
+    var pool = [];
+    var easy = shuffle(Q.filter(function (q) { return q.lv <= 2; }));
+    var med = shuffle(Q.filter(function (q) { return q.lv >= 3 && q.lv <= 4; }));
+    var hard = shuffle(Q.filter(function (q) { return q.lv >= 5; }));
+
+    for (var i = 0; i < 5; i++) pool.push(easy[i] || Q[i % Q.length]);
+    for (var j = 0; j < 5; j++) pool.push(med[j] || Q[(j + 5) % Q.length]);
+    for (var k = 0; k < 5; k++) pool.push(hard[k] || Q[(k + 10) % Q.length]);
+
+    S = {
+      view: 'millionaire',
+      items: pool.map(makeItem),
+      level: 0,
+      lifelines: { f50: true, audience: true, expert: true },
+      hiddenOpts: [],
+      modalInfo: null,
+      locked: false,
+      won: false
+    };
+    renderMillionaire();
+  }
+
+  function renderMillionaire() {
+    var it = S.items[S.level];
+    var cp = correctPos(it);
+    var prize = MIL_PRIZES[S.level];
+
+    var ladderNodes = MIL_PRIZES.map(function (p, idx) {
+      var isMilestone = idx === 4 || idx === 9 || idx === 14;
+      var cls = 'mil-step' + (idx === S.level ? ' active' : '') + (idx < S.level ? ' passed' : '') + (isMilestone ? ' milestone' : '');
+      return h('div', { class: cls },
+        h('span', { class: 'mil-num' }, (idx + 1)),
+        h('span', { class: 'mil-val' }, p.toLocaleString() + ' VNĐ'));
+    }).reverse();
+
+    var btn50 = h('button', {
+      class: 'btn' + (!S.lifelines.f50 ? ' used' : ''),
+      disabled: !S.lifelines.f50 || S.locked ? true : null,
+      onclick: use5050
+    }, '✂ 50:50');
+
+    var btnAudience = h('button', {
+      class: 'btn' + (!S.lifelines.audience ? ' used' : ''),
+      disabled: !S.lifelines.audience || S.locked ? true : null,
+      onclick: useAudience
+    }, '📊 Khán giả');
+
+    var btnExpert = h('button', {
+      class: 'btn' + (!S.lifelines.expert ? ' used' : ''),
+      disabled: !S.lifelines.expert || S.locked ? true : null,
+      onclick: useExpert
+    }, '☎ Chuyên gia');
+
+    var btnWalk = h('button', {
+      class: 'btn bad-t',
+      disabled: S.locked ? true : null,
+      onclick: walkawayMillionaire
+    }, '🛑 Dừng chơi');
+
+    var opts = [0, 1, 2, 3].map(function (k) {
+      var isHidden = S.hiddenOpts.indexOf(k) >= 0;
+      var state = isHidden ? 'dim locked' : '';
+      if (S.locked) {
+        if (k === cp) state = 'correct locked';
+        else if (k === it.picked) state = 'wrong locked';
+        else state = 'dim locked';
+      }
+      var btn = optionButton(it, k, state, function () { pickMillionaire(k); });
+      if (isHidden) btn.style.visibility = 'hidden';
+      return btn;
+    });
+
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'hud' },
+        h('b', null, '🏆 AI LÀ TRIỆU PHÚ TRIẾT HỌC'),
+        h('div', { class: 'stats' },
+          h('span', null, 'Câu ', h('b', null, (S.level + 1) + '/15')),
+          h('span', { class: 'ok-t' }, 'Giá trị: ', h('b', null, prize.toLocaleString() + ' VNĐ'))),
+        h('button', { class: 'btn ghost', onclick: gameMenu }, 'Thoát')),
+
+      h('div', { class: 'mil-layout' },
+        h('div', { class: 'mil-main' },
+          h('div', { class: 'card qcard' },
+            qHeader(it, 'Mức thưởng: ' + prize.toLocaleString() + ' VNĐ'),
+            h('div', { class: 'qtext' }, it.q.q),
+            h('div', { class: 'opts' }, opts)),
+
+          h('div', { class: 'card row between' },
+            h('div', { class: 'row' }, btn50, btnAudience, btnExpert),
+            btnWalk),
+
+          S.modalInfo ? h('div', { class: 'card explain' }, S.modalInfo) : null
+        ),
+        h('div', { class: 'card mil-ladder' }, h('h3', null, 'Thang Tiền Thưởng'), ladderNodes)
+      ),
+      kbdBar([['1-4 / A-D', 'Chọn đáp án'], ['S', 'Đánh dấu']])));
+  }
+
+  function pickMillionaire(k) {
+    if (S.locked || S.hiddenOpts.indexOf(k) >= 0) return;
+    var it = S.items[S.level];
+    it.picked = k;
+    S.locked = true;
+    var ok = it.order[k] === it.q.a;
+    record(it.q, ok);
+    save();
+    renderMillionaire();
+
+    setTimeout(function () {
+      if (!S || S.view !== 'millionaire') return;
+      if (ok) {
+        if (S.level + 1 >= 15) {
+          finishMillionaire(true);
+        } else {
+          S.level++;
+          S.hiddenOpts = [];
+          S.modalInfo = null;
+          S.locked = false;
+          renderMillionaire();
+        }
+      } else {
+        finishMillionaire(false);
+      }
+    }, 1500);
+  }
+
+  function use5050() {
+    if (!S.lifelines.f50 || S.locked) return;
+    S.lifelines.f50 = false;
+    var it = S.items[S.level];
+    var cp = correctPos(it);
+    var wrongPositions = shuffle([0, 1, 2, 3].filter(function (p) { return p !== cp; }));
+    S.hiddenOpts = [wrongPositions[0], wrongPositions[1]];
+    toast('Đã loại bỏ 2 phương án sai!', 'info');
+    renderMillionaire();
+  }
+
+  function useAudience() {
+    if (!S.lifelines.audience || S.locked) return;
+    S.lifelines.audience = false;
+    var it = S.items[S.level];
+    var cp = correctPos(it);
+    var pCorrect = 55 + Math.floor(Math.random() * 25);
+    var pRemain = 100 - pCorrect;
+    var p1 = Math.floor(Math.random() * pRemain);
+    var p2 = Math.floor(Math.random() * (pRemain - p1));
+    var p3 = pRemain - p1 - p2;
+
+    var percents = [0, 0, 0, 0];
+    var wrongs = [0, 1, 2, 3].filter(function (x) { return x !== cp; });
+    percents[cp] = pCorrect;
+    percents[wrongs[0]] = p1;
+    percents[wrongs[1]] = p2;
+    percents[wrongs[2]] = p3;
+
+    S.modalInfo = h('div', null,
+      h('b', null, '📊 Ý kiến khán giả trường quay:'),
+      h('div', { class: 'row', style: 'margin-top:8px;' },
+        LETTERS.map(function (lettr, idx) {
+          return h('div', { style: 'flex:1; text-align:center;' },
+            h('div', { class: 'small' }, lettr),
+            h('b', null, percents[idx] + '%'));
+        })));
+    renderMillionaire();
+  }
+
+  function useExpert() {
+    if (!S.lifelines.expert || S.locked) return;
+    S.lifelines.expert = false;
+    var it = S.items[S.level];
+    var cp = correctPos(it);
+    var correctLetter = LETTERS[cp];
+    S.modalInfo = h('div', null,
+      h('b', null, '☎ Tư vấn từ Chuyên gia Triết học:'),
+      h('p', { style: 'margin-top:6px;' }, '"Dựa trên phép biện chứng duy vật và hệ thống phạm trù cơ bản, phương án chính xác là ' + correctLetter + '."'));
+    renderMillionaire();
+  }
+
+  function walkawayMillionaire() {
+    var safePrize = S.level > 0 ? MIL_PRIZES[S.level - 1].toLocaleString() + ' VNĐ' : '0 VNĐ';
+    askConfirm({
+      icon: '🛑',
+      title: 'Dừng cuộc chơi?',
+      message: 'Bạn sẽ dừng lại và mang về mức tiền thưởng bảo toàn hiện tại: ' + safePrize + '.',
+      okText: 'Dừng chơi & nhận thưởng'
+    }, function () {
+      finishMillionaire('walkaway');
+    });
+  }
+
+  function finishMillionaire(status) {
+    stopTimer();
+    var finalPrize = 0;
+    var st = stat('millionaire');
+    st.runs++;
+
+    if (status === true) {
+      finalPrize = MIL_PRIZES[14];
+      sfx.win();
+      launchConfetti(45);
+    } else if (status === 'walkaway') {
+      finalPrize = S.level > 0 ? MIL_PRIZES[S.level - 1] : 0;
+    } else {
+      if (S.level >= 10) finalPrize = MIL_PRIZES[9];
+      else if (S.level >= 5) finalPrize = MIL_PRIZES[4];
+      else finalPrize = 0;
+    }
+
+    if (finalPrize > st.best) st.best = finalPrize;
+    var reached = status === true ? 15 : S.level;
+    var xuReward = status === true ? 300 : Math.max(15, reached * 15);
+    var expReward = status === true ? 120 : Math.max(20, reached * 8);
+    var res = recordGameComplete('Ai Là Triệu Phú', xuReward, expReward);
+
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'card score' },
+        h('div', { class: 'muted' }, 'KẾT QUẢ GAME "AI LÀ TRIỆU PHÚ TRIẾT HỌC"'),
+        h('div', { class: 'big ok-t' }, finalPrize.toLocaleString() + ' VNĐ'),
+        h('p', null, status === true ? '🎉 Xuất sắc! Bạn đã vượt qua 15 câu hỏi để trở thành TRIỆU PHÚ TRIẾT HỌC!' : (status === 'walkaway' ? 'Bạn đã quyết định dừng cuộc chơi an toàn.' : 'Rất tiếc! Bạn đã chọn sai ở câu ' + (S.level + 1))),
+        h('p', { class: 'ok-t' }, '🪙 Phần thưởng nhận được: +' + res.xu + ' Xu Triết & +' + res.exp + ' EXP'),
+        h('div', { class: 'row', style: 'justify-content:center; margin-top:16px;' },
+          h('button', { class: 'btn primary', onclick: startMillionaire }, '↻ Chơi lại'),
+          h('button', { class: 'btn gold', onclick: function () { shopPage('bg'); } }, '🏪 Vào Cửa hàng'),
+          h('button', { class: 'btn', onclick: gameMenu }, 'Gameshow khác')))));
+  }
+
+  /* ---------- GAMESHOW 2: ĐƯỜNG LÊN ĐỈNH OLYMPIA ---------- */
+  function startOlympia() {
+    stopTimer();
+    setNav('navGame');
+    var pool = shuffle(Q).slice(0, 14).map(makeItem);
+    S = {
+      view: 'olympia', items: pool, round: 0, idx: 0, score: 0, locked: false,
+      round1: pool.slice(0, 6), obstacle: pool[6], round3: pool.slice(7, 11), round4: pool.slice(11, 14),
+      obstacleSolved: false, obstacleHints: 0, timeLeft: 15, finalStake: 20, starUsed: false, starActive: false
+    };
+    renderOlympiaRound();
+  }
+
+  function renderOlympiaRound() {
+    stopTimer();
+    if (S.round === 0) return renderOlympiaQuestionRound(S.round1, 'Khởi động', 10, 15, 'Mỗi câu đúng được 10 điểm. Trả lời nhanh trong 15 giây.');
+    if (S.round === 1) return renderOlympiaObstacle();
+    if (S.round === 2) return renderOlympiaQuestionRound(S.round3, 'Tăng tốc', null, 10, 'Vòng biến tấu: điểm tính theo tốc độ — đúng trong 3 giây được 30 điểm, 6 giây được 20 điểm, sau đó được 10 điểm.');
+    if (S.round === 3) return renderOlympiaFinishRound();
+    finishOlympia();
+  }
+
+  function renderOlympiaQuestionRound(items, title, base, seconds, description) {
+    var it = items[S.idx];
+    if (!it) { S.round++; S.idx = 0; renderOlympiaRound(); return; }
+    var cp = correctPos(it);
+    var opts = [0, 1, 2, 3].map(function (k) {
+      var state = '';
+      if (S.locked) state = k === cp ? 'correct locked' : (k === it.picked ? 'wrong locked' : 'dim locked');
+      return optionButton(it, k, state, function () { pickOlympiaRound(k, title, base, seconds); });
+    });
+    mount(h('div', { class: 'stack olympia-game' },
+      h('div', { class: 'hud' }, h('b', null, '🏔️ ĐƯỜNG LÊN ĐỈNH OLYMPIA'),
+        h('div', { class: 'stats' }, h('span', null, 'Điểm: ', h('b', null, S.score)), h('span', null, 'Vòng ', h('b', null, (S.round + 1) + '/4'))),
+        h('button', { class: 'btn ghost', onclick: gameMenu }, 'Thoát')),
+      olympiaProgress(),
+      h('div', { class: 'card qcard' },
+        h('div', { class: 'eyebrow' }, title.toUpperCase()),
+        h('h2', null, title + ' · Câu ' + (S.idx + 1) + '/' + items.length),
+        h('p', { class: 'muted' }, description),
+        h('div', { class: 'hud' }, qHeader(it, title), seconds ? h('span', { class: 'chip', id: 'olyTimer' }, '⏱ ' + S.timeLeft + ' giây') : null),
+        h('div', { class: 'qtext' }, it.q.q), h('div', { class: 'opts' }, opts)),
+      kbdBar([['1-4 / A-D', 'Chọn đáp án']])));
+    if (seconds) runOlympiaRoundTimer(title, base, seconds);
+  }
+
+  function olympiaProgress() {
+    return h('div', { class: 'olympia-rounds' }, ['Khởi động', 'Vượt chướng ngại vật', 'Tăng tốc', 'Về đích'].map(function (t, i) {
+      return h('div', { class: 'olympia-round' + (i === S.round ? ' active' : '') + (i < S.round ? ' done' : '') }, h('b', null, (i + 1) + '. '), t);
+    }));
+  }
+
+  function runOlympiaRoundTimer(title, base, seconds) {
+    stopTimer();
+    timer = setInterval(function () {
+      if (!S || S.view !== 'olympia' || S.locked) return;
+      S.timeLeft--;
+      var el = document.getElementById('olyTimer');
+      if (el) el.textContent = '⏱ ' + S.timeLeft + ' giây';
+      if (S.timeLeft <= 0) pickOlympiaRound(-1, title, base, seconds);
+    }, 1000);
+  }
+
+  function pickOlympiaRound(k, title, base, seconds) {
+    if (S.locked) return;
+    stopTimer(); S.locked = true;
+    var items = S.round === 0 ? S.round1 : S.round3;
+    var it = items[S.idx]; it.picked = k;
+    var ok = k >= 0 && it.order[k] === it.q.a;
+    var earned = 0;
+    if (ok) {
+      if (title === 'Tăng tốc') earned = S.timeLeft >= 7 ? 30 : (S.timeLeft >= 4 ? 20 : 10);
+      else earned = base || 10;
+      S.score += earned; record(it.q, true);
+    } else if (k >= 0) record(it.q, false);
+    else sfx.bad();
+    save();
+    renderOlympiaQuestionRound(items, title, base, seconds, title === 'Tăng tốc' ? 'Tăng tốc: điểm theo thời gian còn lại.' : 'Kết quả: ' + (ok ? 'đúng, +' + earned + ' điểm.' : 'chưa đúng, không có điểm.'));
+    setTimeout(function () {
+      if (!S || S.view !== 'olympia') return;
+      S.idx++;
+      if (S.idx >= items.length) { S.round++; S.idx = 0; }
+      S.locked = false; S.timeLeft = seconds || 10; renderOlympiaRound();
+    }, 1000);
+  }
+
+  function renderOlympiaObstacle() {
+    var it = S.obstacle;
+    var answer = it.q.o[it.q.a];
+    var hints = [
+      'Gợi ý 1: Đáp án thuộc nội dung Triết học Mác – Lênin.',
+      'Gợi ý 2: Đọc kỹ câu hỏi gốc; chú ý khái niệm trọng tâm và mối quan hệ được hỏi.',
+      'Gợi ý 3: Đáp án có ' + answer.length + ' ký tự (tính cả khoảng trắng).'
+    ];
+    var opts = [0, 1, 2, 3].map(function (k) {
+      var state = '';
+      if (S.locked) state = k === correctPos(it) ? 'correct locked' : (k === it.picked ? 'wrong locked' : 'dim locked');
+      return optionButton(it, k, state, function () { pickOlympiaObstacle(k); });
+    });
+    mount(h('div', { class: 'stack olympia-game' },
+      h('div', { class: 'hud' }, h('b', null, '🏔️ ĐƯỜNG LÊN ĐỈNH OLYMPIA'), h('span', { class: 'chip' }, 'Điểm: ' + S.score), h('button', { class: 'btn ghost', onclick: gameMenu }, 'Thoát')),
+      olympiaProgress(),
+      h('div', { class: 'card qcard' }, h('div', { class: 'eyebrow' }, 'VÒNG 2 · VƯỢT CHƯỚNG NGẠI VẬT'),
+        h('h2', null, 'Giải mã chướng ngại vật'),
+        h('p', { class: 'muted' }, 'Trả lời câu hỏi để mở khóa chướng ngại vật. Đúng +40 điểm; sai -10 điểm. Bạn có thể mở từng gợi ý.'),
+        h('div', { class: 'qtext' }, it.q.q),
+        h('div', { class: 'row', style: 'margin-bottom:12px' },
+          h('button', {
+            class: 'btn', disabled: S.obstacleHints >= 3 || S.locked ? true : null,
+            onclick: function () { S.obstacleHints++; toast(hints[S.obstacleHints - 1], 'info'); renderOlympiaObstacle(); }
+          }, '💡 Mở gợi ý (' + S.obstacleHints + '/3)'),
+          h('span', { class: 'chip' }, 'Chương ' + it.q.ch)),
+        h('div', { class: 'opts' }, opts),
+        S.locked ? h('div', { class: 'feedback ' + (S.obstacleSolved ? 'ok' : 'bad') }, S.obstacleSolved ? '✔ Mở khóa thành công! +40 điểm.' : '✘ Chướng ngại vật vẫn còn. -10 điểm.') : null,
+        S.locked ? h('div', { class: 'actions' }, h('button', { class: 'btn primary', onclick: nextOlympiaFromObstacle }, 'Sang vòng Tăng tốc →')) : null)));
+  }
+
+  function pickOlympiaObstacle(k) {
+    if (S.locked) return;
+    S.locked = true;
+    var it = S.obstacle;
+    it.picked = k;
+    var ok = it.order[k] === it.q.a;
+    if (ok) { S.score += 40; S.obstacleSolved = true; record(it.q, true); }
+    else { S.score = Math.max(0, S.score - 10); record(it.q, false); }
+    save();
+    renderOlympiaObstacle();
+  }
+
+  function nextOlympiaFromObstacle() {
+    S.round = 2; S.idx = 0; S.locked = false; S.timeLeft = 10; renderOlympiaRound();
+  }
+
+  function renderOlympiaFinishRound() {
+    var items = S.round4, it = items[S.idx];
+    if (!it) { finishOlympia(); return; }
+    var cp = correctPos(it);
+    var opts = [0, 1, 2, 3].map(function (k) {
+      var state = '';
+      if (S.locked) state = k === cp ? 'correct locked' : (k === it.picked ? 'wrong locked' : 'dim locked');
+      return optionButton(it, k, state, function () { pickOlympiaFinish(k); });
+    });
+    var stakeBtns = [20, 30].map(function (n) {
+      return h('button', { class: 'btn' + (S.finalStake === n ? ' primary' : ''), disabled: S.locked ? true : null, onclick: function () { S.finalStake = n; renderOlympiaFinishRound(); } }, n + ' điểm');
+    });
+    mount(h('div', { class: 'stack olympia-game' },
+      h('div', { class: 'hud' }, h('b', null, '🏔️ ĐƯỜNG LÊN ĐỈNH OLYMPIA'), h('span', { class: 'stats' }, 'Điểm: ', h('b', null, S.score)), h('button', { class: 'btn ghost', onclick: gameMenu }, 'Thoát')),
+      olympiaProgress(),
+      h('div', { class: 'card qcard' }, h('div', { class: 'eyebrow' }, 'VÒNG 4 · VỀ ĐÍCH'), h('h2', null, 'Câu ' + (S.idx + 1) + '/3'),
+        h('p', { class: 'muted' }, 'Chọn mức điểm cược trước khi trả lời. Đúng cộng điểm, sai trừ điểm cược.'),
+        h('div', { class: 'row', style: 'margin-bottom:10px' }, h('b', null, 'Mức cược:'), stakeBtns),
+        qHeader(it, 'Cược ' + S.finalStake + ' điểm'),
+        h('div', { class: 'qtext' }, it.q.q),
+        h('div', { class: 'opts' }, opts),
+        h('div', { class: 'actions' },
+          h('button', {
+            class: 'btn' + (S.starUsed ? ' used' : ''), disabled: S.starUsed || S.locked ? true : null,
+            onclick: function () { S.starUsed = true; S.finalStake = 30; toast('Ngôi sao hy vọng: câu này cược 30 điểm!', 'info'); renderOlympiaFinishRound(); }
+          }, '🌟 Ngôi sao hy vọng (cược 30 điểm)')))));
+  }
+
+  function pickOlympiaFinish(k) {
+    if (S.locked) return;
+    S.locked = true;
+    var it = S.round4[S.idx]; it.picked = k;
+    var ok = k >= 0 && it.order[k] === it.q.a;
+    if (ok) { S.score += S.finalStake; record(it.q, true); }
+    else { S.score -= S.finalStake; if (k >= 0) record(it.q, false); }
+    save();
+    renderOlympiaFinishRound();
+    setTimeout(function () {
+      if (!S || S.view !== 'olympia') return;
+      S.idx++; S.locked = false; S.finalStake = 20;
+      if (S.idx >= S.round4.length) finishOlympia(); else renderOlympiaFinishRound();
+    }, 1200);
+  }
+
+  function finishOlympia() {
+    stopTimer();
+    var st = stat('olympia'); st.runs++; if (S.score > st.best) st.best = S.score;
+    var xuReward = Math.max(25, Math.round(Math.max(0, S.score) * 0.8));
+    var expReward = Math.max(30, Math.round(Math.max(0, S.score) * 0.6));
+    var res = recordGameComplete('Đường Lên Đỉnh Olympia', xuReward, expReward);
+    sfx.win();
+    launchConfetti(34);
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'card score' },
+        h('div', { class: 'muted' }, 'KẾT QUẢ ĐƯỜNG LÊN ĐỈNH OLYMPIA'),
+        h('div', { class: 'big ok-t' }, S.score + ' ĐIỂM'),
+        h('p', null, 'Bạn đã hoàn thành đủ 4 vòng: Khởi động, Vượt chướng ngại vật, Tăng tốc và Về đích.'),
+        h('p', { class: 'ok-t' }, '🪙 Phần thưởng nhận được: +' + res.xu + ' Xu Triết & +' + res.exp + ' EXP'),
+        h('div', { class: 'row', style: 'justify-content:center;margin-top:16px;' },
+          h('button', { class: 'btn primary', onclick: startOlympia }, '↻ Thi đấu lại'),
+          h('button', { class: 'btn gold', onclick: function () { shopPage('bg'); } }, '🏪 Vào Cửa hàng'),
+          h('button', { class: 'btn', onclick: gameMenu }, 'Gameshow khác')))));
+  }
+
+  /* ---------- GAMESHOW 3: CHIẾC NÓN KỲ DIỆU ---------- */
+  var WHEEL_SLICES = [
+    { name: 'Mất lượt', type: 'lose' },
+    { name: '+100 điểm', type: 'points', value: 100 },
+    { name: 'Nhân đôi', type: 'double' },
+    { name: '+200 điểm', type: 'points', value: 200 },
+    { name: 'Thêm lượt', type: 'again' },
+    { name: '-100 điểm', type: 'minus', value: 100 },
+    { name: '+300 điểm', type: 'points', value: 300 },
+    { name: 'Bí mật', type: 'mystery' }
+  ];
+
+  function startWheel() {
+    stopTimer();
+    setNav('navGame');
+    S = { view: 'wheel', score: 0, round: 0, used: [], current: null, item: null, spinning: false, angle: 0, finished: false, bonusTurn: false, rewardRes: null };
+    renderWheel();
+  }
+
+  function renderWheel() {
+    var done = S.round >= 8;
+    if (done && !S.finished) {
+      S.finished = true;
+      var ws = stat('wheel'); ws.runs++; if (S.score > ws.best) ws.best = S.score;
+      var xuReward = Math.max(25, Math.min(200, Math.round(Math.max(0, S.score) * 0.12)));
+      S.rewardRes = recordGameComplete('Chiếc Nón Kỳ Diệu', xuReward, 45);
+      sfx.win();
+      launchConfetti(30);
+    }
+    var body = done
+      ? h('div', { class: 'card score' },
+          h('h2', null, 'Kết thúc 8 lượt quay!'),
+          h('div', { class: 'big' }, S.score + ' điểm'),
+          S.rewardRes ? h('p', { class: 'ok-t' }, '🪙 Phần thưởng nhận được: +' + S.rewardRes.xu + ' Xu Triết & +' + S.rewardRes.exp + ' EXP') : null,
+          h('div', { class: 'row', style: 'justify-content:center;margin-top:16px' },
+            h('button', { class: 'btn primary', onclick: startWheel }, '↻ Chơi lại'),
+            h('button', { class: 'btn gold', onclick: function () { shopPage('bg'); } }, '🏪 Vào Cửa hàng'),
+            h('button', { class: 'btn', onclick: gameMenu }, 'Gameshow khác')))
+      : h('div', { class: 'card qcard stack' },
+          h('div', { class: 'wheel-wrap' },
+            h('div', { class: 'wheel-pointer' }, '▼'),
+            h('div', {
+              class: 'wheel-disc',
+              style: 'transform:rotate(' + S.angle + 'deg)'
+            }, WHEEL_SLICES.map(function (x, i) {
+              return h('span', { class: 'wheel-label', style: '--slice:' + i }, x.name);
+            }))),
+          h('div', { class: 'row between' },
+            h('span', { class: 'chip' }, 'Lượt ' + (S.round + 1) + '/8'),
+            h('span', { class: 'chip' }, 'Điểm: ' + S.score)),
+          h('p', { class: 'muted' }, 'Quay nón để nhận ô thử thách điểm số, sau đó trả lời câu hỏi Triết học để ghi điểm.'),
+          h('button', { class: 'btn primary big', disabled: S.spinning ? true : null, onclick: spinWheel }, S.spinning ? 'Đang quay nón…' : '🎡 QUAY NÓN'));
+
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'hud' }, h('b', null, '🎡 CHIẾC NÓN KỲ DIỆU'), h('span', { class: 'chip' }, 'Điểm: ' + S.score), h('button', { class: 'btn ghost', onclick: gameMenu }, 'Thoát')),
+      body,
+      !done ? kbdBar([['Enter / Space', 'Quay nón']]) : null));
+  }
+
+  function spinWheel() {
+    if (S.spinning || S.round >= 8) return;
+    S.spinning = true;
+    var sliceIdx = Math.floor(Math.random() * WHEEL_SLICES.length);
+    var slice = WHEEL_SLICES[sliceIdx];
+    var targetOffset = (360 - (sliceIdx * 45 + 22.5)) % 360;
+    var currentMod = ((S.angle % 360) + 360) % 360;
+    var delta = (targetOffset - currentMod + 360) % 360;
+    S.angle += 1440 + delta;
+    renderWheel();
+
+    setTimeout(function () {
+      if (!S || S.view !== 'wheel') return;
+      S.spinning = false;
+      S.current = slice;
+      if (slice.type === 'lose') {
+        sfx.bad();
+        toast('Ô Mất lượt! Điểm giữ nguyên.', 'bad');
+        S.round++;
+        renderWheel();
+        return;
+      }
+      toast('Ô trúng: ' + slice.name + '!', 'info');
+      if (slice.type === 'points') S.pending = slice.value;
+      else if (slice.type === 'minus') S.pending = -slice.value;
+      else if (slice.type === 'double') S.pending = 'double';
+      else if (slice.type === 'again') { S.pending = 100; S.bonusTurn = true; }
+      else S.pending = 200;
+
+      setTimeout(function () {
+        if (!S || S.view !== 'wheel') return;
+        var q = shuffle(Q.filter(function (x) { return S.used.indexOf(x.id) < 0; }))[0] || Q[Math.floor(Math.random() * Q.length)];
+        S.used.push(q.id);
+        S.item = makeItem(q);
+        renderWheelQuestion();
+      }, 500);
+    }, 1750);
+  }
+
+  function renderWheelQuestion() {
+    var it = S.item;
+    var opts = [0, 1, 2, 3].map(function (k) {
+      return optionButton(it, k, '', function () { answerWheel(k); });
+    });
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'hud' },
+        h('b', null, '🎡 CHIẾC NÓN KỲ DIỆU'),
+        h('span', { class: 'chip' }, 'Ô trúng: ' + S.current.name),
+        h('span', { class: 'chip' }, 'Điểm: ' + S.score),
+        h('button', { class: 'btn ghost', onclick: gameMenu }, 'Thoát')),
+      h('div', { class: 'card qcard' },
+        h('div', { class: 'eyebrow' }, 'THỬ THÁCH LƯỢT ' + (S.round + 1)),
+        qHeader(it),
+        h('div', { class: 'qtext' }, it.q.q),
+        h('div', { class: 'opts' }, opts)),
+      kbdBar([['1-4 / A-D', 'Chọn đáp án'], ['S', 'Đánh dấu']])));
+  }
+
+  function answerWheel(k) {
+    var it = S.item;
+    var ok = it.order[k] === it.q.a;
+    record(it.q, ok);
+    if (ok) {
+      var delta = S.pending === 'double' ? (S.score > 0 ? S.score : 200) : S.pending;
+      S.score += delta;
+      toast('Chính xác! ' + (delta >= 0 ? '+' : '') + delta + ' điểm.', 'ok');
+    } else {
+      if (typeof S.pending === 'number' && S.pending < 0) S.score += S.pending;
+      toast('Chưa chính xác!', 'bad');
+    }
+    save();
+    if (!(ok && S.bonusTurn)) {
+      S.round++;
+    } else {
+      toast('Bạn nhận thêm một lượt quay miễn phí!', 'ok');
+    }
+    S.bonusTurn = false;
+    S.item = null;
+    renderWheel();
+  }
+
+  /* ---------- GAMESHOW 4: JEOPARDY TRIẾT HỌC ---------- */
+  var JEOPARDY_CATS = ['Chương 1', 'Chương 2', 'Chương 3', 'Thử thách tổng hợp'];
+  function startJeopardy() {
+    stopTimer();
+    setNav('navGame');
+    var board = [];
+    JEOPARDY_CATS.forEach(function (cat, c) {
+      var pool = shuffle(Q.filter(function (q) { return c === 3 || q.ch === c + 1; }));
+      for (var r = 0; r < 5; r++) {
+        var q = pool[r] || shuffle(Q)[0];
+        board.push({ cat: cat, value: (r + 1) * 100, item: makeItem(q), used: false });
+      }
+    });
+    S = { view: 'jeopardy', board: board, score: 0, current: null, answered: 0, finished: false, rewardRes: null };
+    renderJeopardy();
+  }
+  function renderJeopardy() {
+    if (S.board.every(function (x) { return x.used; }) && !S.finished) {
+      S.finished = true;
+      var js = stat('jeopardy'); js.runs++; if (S.score > js.best) js.best = S.score;
+      var xuReward = Math.max(30, Math.min(240, Math.round(Math.max(0, S.score) * 0.05)));
+      S.rewardRes = recordGameComplete('Jeopardy Triết Học', xuReward, 60);
+      sfx.win();
+      launchConfetti(34);
+    }
+    if (S.current) {
+      var cell = S.current, it = cell.item, cp = correctPos(it);
+      var opts = [0, 1, 2, 3].map(function (k) {
+        var state = '';
+        if (cell.locked) state = k === cp ? 'correct locked' : (k === it.picked ? 'wrong locked' : 'dim locked');
+        return optionButton(it, k, state, function () { answerJeopardy(k); });
+      });
+      mount(h('div', { class: 'stack' },
+        h('div', { class: 'hud' }, h('b', null, '🟦 JEOPARDY TRIẾT HỌC'), h('span', { class: 'chip' }, 'Điểm: ' + S.score), h('button', { class: 'btn ghost', onclick: gameMenu }, 'Thoát')),
+        h('div', { class: 'card qcard' },
+          h('div', { class: 'eyebrow' }, cell.cat + ' · ' + cell.value + ' ĐIỂM'),
+          qHeader(it),
+          h('div', { class: 'qtext' }, it.q.q),
+          h('div', { class: 'opts' }, opts),
+          cell.locked ? h('div', { class: 'actions' }, h('button', { class: 'btn primary', onclick: function () { S.current = null; renderJeopardy(); } }, 'Trở lại bảng điểm')) : null),
+        kbdBar(cell.locked ? [['Enter', 'Trở lại bảng điểm']] : [['1-4 / A-D', 'Chọn đáp án'], ['S', 'Đánh dấu']])));
+      return;
+    }
+    var cats = JEOPARDY_CATS.map(function (cat) { return h('div', { class: 'jeopardy-cat' }, cat); });
+    var cells = [];
+    for (var r = 0; r < 5; r++) {
+      for (var c = 0; c < 4; c++) {
+        var cell = S.board[c * 5 + r];
+        cells.push(h('button', {
+          class: 'jeopardy-cell' + (cell.used ? ' used' : ''), disabled: cell.used ? true : null,
+          onclick: (function (target) { return function () { S.current = target; renderJeopardy(); }; })(cell)
+        }, cell.used ? '✓' : cell.value));
+      }
+    }
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'hud' }, h('b', null, '🟦 JEOPARDY TRIẾT HỌC'), h('span', { class: 'chip' }, 'Điểm: ' + S.score), h('button', { class: 'btn ghost', onclick: gameMenu }, 'Thoát')),
+      h('p', { class: 'muted' }, 'Chọn một ô điểm. Mỗi ô chỉ được mở một lần; đúng cộng điểm, sai trừ điểm.'),
+      h('div', { class: 'jeopardy-board' }, cats.concat(cells)),
+      S.board.every(function (x) { return x.used; })
+        ? h('div', { class: 'card score' },
+            h('h2', null, 'Ván đấu kết thúc'),
+            h('div', { class: 'big' }, S.score + ' điểm'),
+            S.rewardRes ? h('p', { class: 'ok-t' }, '🪙 Phần thưởng nhận được: +' + S.rewardRes.xu + ' Xu Triết & +' + S.rewardRes.exp + ' EXP') : null,
+            h('div', { class: 'row', style: 'justify-content:center;margin-top:14px' },
+              h('button', { class: 'btn primary', onclick: startJeopardy }, 'Chơi lại'),
+              h('button', { class: 'btn gold', onclick: function () { shopPage('bg'); } }, '🏪 Vào Cửa hàng')))
+        : null));
+  }
+  function answerJeopardy(k) {
+    var cell = S.current;
+    if (!cell || cell.locked) return;
+    cell.locked = true;
+    cell.item.picked = k;
+    var ok = cell.item.order[k] === cell.item.q.a;
+    cell.used = true;
+    S.answered++;
+    if (ok) { S.score += cell.value; record(cell.item.q, true); }
+    else { S.score -= cell.value; record(cell.item.q, false); }
+    var st = stat('jeopardy'); if (S.score > st.best) st.best = S.score;
+    save();
+    renderJeopardy();
+  }
+
+  /* ---------- Phím tắt bàn phím toàn cục ---------- */
+  function currentQuestionObj() {
+    if (!S) return null;
+    if (S.view === 'practice' || S.view === 'mix') return S.items[S.i] ? S.items[S.i].q : null;
+    if (S.view === 'millionaire') return S.items[S.level] ? S.items[S.level].q : null;
+    if (S.view === 'olympia') {
+      if (S.round === 0 && S.round1[S.idx]) return S.round1[S.idx].q;
+      if (S.round === 1 && S.obstacle) return S.obstacle.q;
+      if (S.round === 2 && S.round3[S.idx]) return S.round3[S.idx].q;
+      if (S.round === 3 && S.round4[S.idx]) return S.round4[S.idx].q;
+    }
+    if (S.view === 'wheel' && S.item) return S.item.q;
+    if (S.view === 'jeopardy' && S.current) return S.current.item.q;
+    return null;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (isOverlayOpen() || !S) return;
+    var tag = document.activeElement ? document.activeElement.tagName : '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    var key = e.key;
+    var lower = key.toLowerCase();
+
+    if (lower === 's') {
+      var cq = currentQuestionObj();
+      if (cq) {
+        e.preventDefault();
+        if (store.marks[cq.id]) { delete store.marks[cq.id]; toast('Đã bỏ đánh dấu câu hỏi.', 'info'); }
+        else { store.marks[cq.id] = 1; toast('Đã đánh dấu sao câu hỏi.', 'ok'); }
+        save();
+        var starEl = document.querySelector('.star');
+        if (starEl) {
+          starEl.classList.toggle('on', !!store.marks[cq.id]);
+          starEl.textContent = store.marks[cq.id] ? '★' : '☆';
+        }
+      }
+      return;
+    }
+
+    var optIdx = -1;
+    if (key >= '1' && key <= '4') optIdx = parseInt(key, 10) - 1;
+    else if (lower >= 'a' && lower <= 'd') optIdx = lower.charCodeAt(0) - 97;
+
+    if (optIdx >= 0 && optIdx <= 3) {
+      if (S.view === 'practice' && S.items[S.i] && S.items[S.i].picked === null) {
+        e.preventDefault(); pickPractice(optIdx); return;
+      }
+      if (S.view === 'mix' && !S.submitted && S.items[S.i]) {
+        e.preventDefault(); pickMix(optIdx); return;
+      }
+      if (S.view === 'millionaire' && !S.locked) {
+        e.preventDefault(); pickMillionaire(optIdx); return;
+      }
+      if (S.view === 'olympia' && !S.locked) {
+        e.preventDefault();
+        if (S.round === 0) pickOlympiaRound(optIdx, 'Khởi động', 10, 15);
+        else if (S.round === 1) pickOlympiaObstacle(optIdx);
+        else if (S.round === 2) pickOlympiaRound(optIdx, 'Tăng tốc', null, 10);
+        else if (S.round === 3) pickOlympiaFinish(optIdx);
+        return;
+      }
+      if (S.view === 'wheel' && S.item) {
+        e.preventDefault(); answerWheel(optIdx); return;
+      }
+      if (S.view === 'jeopardy' && S.current && !S.current.locked) {
+        e.preventDefault(); answerJeopardy(optIdx); return;
+      }
+    }
+
+    if (key === 'Enter' || key === ' ') {
+      if (S.view === 'practice' && S.items[S.i] && S.items[S.i].picked !== null) {
+        e.preventDefault(); nextPractice(); return;
+      }
+      if (S.view === 'mix' && !S.submitted && S.i + 1 < S.items.length) {
+        e.preventDefault(); S.i++; renderMix(); return;
+      }
+      if (S.view === 'olympia' && S.round === 1 && S.locked) {
+        e.preventDefault(); nextOlympiaFromObstacle(); return;
+      }
+      if (S.view === 'jeopardy' && S.current && S.current.locked) {
+        e.preventDefault(); S.current = null; renderJeopardy(); return;
+      }
+      if (S.view === 'wheel' && !S.item && !S.spinning && S.round < 8) {
+        e.preventDefault(); spinWheel(); return;
+      }
+    }
+
+    if (lower === 'r' && S.view === 'practice' && S.cfg.kind === 'chapter') {
+      var curIt = S.items[S.i];
+      if (curIt && curIt.picked !== null && curIt.order[curIt.picked] !== curIt.q.a) {
+        e.preventDefault(); restartPractice(); return;
+      }
+    }
+
+    if (S.view === 'mix' && !S.submitted) {
+      if (key === 'ArrowLeft' && S.i > 0) { e.preventDefault(); S.i--; renderMix(); }
+      else if (key === 'ArrowRight' && S.i + 1 < S.items.length) { e.preventDefault(); S.i++; renderMix(); }
+    }
+  });
+
+  /* ---------- Khởi động ---------- */
+  document.getElementById('navHome').addEventListener('click', home);
+  document.getElementById('brand').addEventListener('click', function (e) { e.preventDefault(); home(); });
+  document.getElementById('navBrowse').addEventListener('click', browse);
+  document.getElementById('navTheory').addEventListener('click', theoryPage);
+  document.getElementById('navWrong').addEventListener('click', function () { reviewPage('wrong'); });
+  document.getElementById('navStats').addEventListener('click', statsPage);
+  document.getElementById('navGame').addEventListener('click', gameMenu);
+  var navShopEl = document.getElementById('navShop');
+  if (navShopEl) navShopEl.addEventListener('click', function () { shopPage('bg'); });
+  var navGuideEl = document.getElementById('navGuide');
+  if (navGuideEl) navGuideEl.addEventListener('click', function () { guidePage('usage'); });
+  var footerGuideEl = document.getElementById('footerGuideBtn');
+  if (footerGuideEl) footerGuideEl.addEventListener('click', function () { guidePage('manage'); });
+  var footerSupportEl = document.getElementById('footerSupportBtn');
+  if (footerSupportEl) {
+    footerSupportEl.addEventListener('click', function () {
+      if (typeof window.openSupportModal === 'function') window.openSupportModal();
+    });
+  }
+  document.getElementById('navSettings').addEventListener('click', openSettings);
+
+  window.addEventListener('pagehide', saveSession);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) saveSession(); });
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+  }
+  applyCosmetics();
+  updateWrongBadge();
+  renderHud();
+  if (!Q.length) {
+    mount(h('p', null, 'Không tải được dữ liệu câu hỏi (questions.js).'));
+  } else {
+    home();
+  }
+})();
