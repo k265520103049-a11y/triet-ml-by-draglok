@@ -7,13 +7,16 @@
   <meta name="description" content="Ôn trắc nghiệm Triết học Mác - Lênin (BAS 123) - ngân hàng 600 câu theo chương, lý thuyết trọng tâm, nhiệm vụ ngày, cửa hàng Xu Triết và đấu trường gameshow.">
   <meta name="theme-color" content="#b3261e">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#" id="brand">☭ Ôn Triết Mác - Lênin</a>
+    <a class="brand" href="#" id="brand">
+      <img class="brand-logo" src="logo.png" alt="Logo Triết ML" width="28" height="28">
+      <span>Ôn Triết Mác - Lênin</span>
+    </a>
     <nav class="nav" aria-label="Điều hướng chính">
       <button class="btn ghost active" id="navHome" type="button" aria-current="page">Trang chủ</button>
       <button class="btn ghost" id="navBrowse" type="button">Tra cứu</button>
@@ -63,7 +66,7 @@
     </section>
   </div>
 
-  <!-- Hộp ủng hộ: hỗ trợ 2 chế độ đóng (Đóng một lần / Ẩn trong 2 giờ) -->
+  <!-- POPUP ủng hộ: hỗ trợ 2 chế độ đóng (Đóng một lần / Ẩn trong 2 giờ) -->
   <div class="support-overlay" id="supportOverlay" hidden>
     <section class="support-dialog" role="dialog" aria-modal="true" aria-labelledby="supportTitle" aria-describedby="supportDesc">
       <button class="support-close" id="supportClose" type="button" aria-label="Đóng một lần">×</button>
@@ -84,7 +87,7 @@
         <button class="btn primary" id="supportCopy" type="button">📋 Sao chép số tài khoản</button>
         <div class="support-dismiss-grid">
           <button class="btn" id="supportCloseOnce" type="button" title="Đóng lần này, tải lại trang sẽ hiện lại">Đóng một lần</button>
-          <button class="btn ghost" id="supportHide2h" type="button" title="Tạm ẩn thông báo này trong 2 giờ">Ẩn trong 2 giờ</button>
+          <button class="btn ghost" id="supportHide2h" type="button" title="Tạm ẩn popup này trong 2 giờ">Ẩn trong 2 giờ</button>
         </div>
       </div>
       <p class="support-copy-status" id="supportCopyStatus" aria-live="polite"></p>
@@ -106,6 +109,7 @@
       var closeOnceBtn = document.getElementById('supportCloseOnce');
       var hide2hBtn = document.getElementById('supportHide2h');
       var copyBtn = document.getElementById('supportCopy');
+      var footerSupportBtn = document.getElementById('footerSupportBtn');
       var status = document.getElementById('supportCopyStatus');
       var qr = document.getElementById('supportQr');
       var ACCOUNT = '400172008';
@@ -134,7 +138,9 @@
         if (status) status.textContent = '';
         overlay.hidden = false;
         document.documentElement.classList.add('support-open');
-        if (closeOnceBtn) { try { closeOnceBtn.focus({ preventScroll: true }); } catch (e) { closeOnceBtn.focus(); } }
+        if (closeOnceBtn) {
+          try { closeOnceBtn.focus({ preventScroll: true }); } catch (e) { closeOnceBtn.focus(); }
+        }
       }
 
       function closeSupportOnce() {
@@ -180,6 +186,7 @@
       if (closeOnceBtn) closeOnceBtn.addEventListener('click', closeSupportOnce);
       if (hide2hBtn) hide2hBtn.addEventListener('click', hideSupportFor2Hours);
       if (copyBtn) copyBtn.addEventListener('click', copyAccount);
+      if (footerSupportBtn) footerSupportBtn.addEventListener('click', openSupport);
       overlay.addEventListener('click', function (e) { if (e.target === overlay) closeSupportOnce(); });
 
       document.addEventListener('keydown', function (e) {
