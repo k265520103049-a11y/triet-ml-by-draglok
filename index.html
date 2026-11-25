@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ôn tập Triết học Mác - Lênin</title>
-  <meta name="description" content="Ôn trắc nghiệm Triết học Mác - Lênin (BAS 123) - ngân hàng 600 câu theo chương, lý thuyết trọng tâm, thống kê tiến độ và đấu trường gameshow.">
+  <meta name="description" content="Ôn trắc nghiệm Triết học Mác - Lênin (BAS 123) - ngân hàng 600 câu theo chương, lý thuyết trọng tâm, nhiệm vụ ngày, cửa hàng Xu Triết và đấu trường gameshow.">
   <meta name="theme-color" content="#b3261e">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -19,20 +19,33 @@
       <button class="btn ghost" id="navBrowse" type="button">Tra cứu</button>
       <button class="btn ghost" id="navTheory" type="button">Ôn lý thuyết</button>
       <button class="btn ghost" id="navGame" type="button">Gameshow</button>
+      <button class="btn ghost" id="navShop" type="button">🏪 Cửa hàng</button>
       <button class="btn ghost" id="navStats" type="button">Thống kê</button>
       <button class="btn ghost" id="navWrong" type="button">Câu sai <span class="badge" id="wrongCount">0</span></button>
+      <button class="btn ghost" id="navGuide" type="button">📖 Hướng dẫn</button>
       <button class="btn ghost icon" id="navSettings" type="button" title="Cài đặt &amp; Sao lưu" aria-label="Cài đặt">⚙</button>
     </nav>
   </header>
+
+  <!-- Thanh trạng thái người chơi: Level, EXP, Danh hiệu, Xu Triết & Nhiệm vụ -->
+  <div class="player-bar-wrap">
+    <div class="player-bar" id="playerHud" aria-label="Thông tin cấp độ và Xu Triết"></div>
+  </div>
 
   <main id="app" class="container" aria-live="polite">
     <section class="card boot-card" role="status">Đang tải nội dung ôn tập…</section>
   </main>
 
   <footer class="footer">
-    Ngân hàng câu hỏi: học phần Triết học Mác - Lênin (BAS 123), 600 câu.
-    Đáp án do người làm web tự lập, hãy đối chiếu với giáo trình khi cần xác minh.
+    <div>Ngân hàng câu hỏi: học phần Triết học Mác - Lênin (BAS 123), 600 câu. Đáp án do người làm web tự lập, hãy đối chiếu với giáo trình khi cần xác minh.</div>
+    <div class="footer-links">
+      <button class="btn ghost small" id="footerGuideBtn" type="button">📖 Hướng dẫn &amp; Quản lý câu hỏi</button>
+      <button class="btn ghost small" id="footerSupportBtn" type="button">☕ Ủng hộ tác giả</button>
+    </div>
   </footer>
+
+  <!-- Lớp hiệu ứng pháo giấy ăn mừng -->
+  <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
 
   <!-- Toast thông báo xếp chồng -->
   <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="false"></div>
@@ -50,10 +63,10 @@
     </section>
   </div>
 
-  <!-- Hộp ủng hộ: hiện ở MỖI lần vào web -->
+  <!-- Hộp ủng hộ: hỗ trợ 2 chế độ đóng (Đóng một lần / Ẩn trong 2 giờ) -->
   <div class="support-overlay" id="supportOverlay" hidden>
     <section class="support-dialog" role="dialog" aria-modal="true" aria-labelledby="supportTitle" aria-describedby="supportDesc">
-      <button class="support-close" id="supportClose" type="button" aria-label="Đóng và tiếp tục học">×</button>
+      <button class="support-close" id="supportClose" type="button" aria-label="Đóng một lần">×</button>
       <div class="support-kicker">LỜI NHẮN NHỎ</div>
       <h2 id="supportTitle">Bạn thấy website hữu ích?</h2>
       <p id="supportDesc">Nếu web giúp bạn ôn thi nhẹ hơn, bạn có thể mời mình một ly cà phê. Hoàn toàn tùy chọn — mọi tính năng vẫn miễn phí.</p>
@@ -68,8 +81,11 @@
         <span class="support-holder">HOANG HAI NAM</span>
       </div>
       <div class="support-actions">
-        <button class="btn primary" id="supportCopy" type="button">Sao chép số tài khoản</button>
-        <button class="btn ghost" id="supportLater" type="button">Để mình học tiếp đã</button>
+        <button class="btn primary" id="supportCopy" type="button">📋 Sao chép số tài khoản</button>
+        <div class="support-dismiss-grid">
+          <button class="btn" id="supportCloseOnce" type="button" title="Đóng lần này, tải lại trang sẽ hiện lại">Đóng một lần</button>
+          <button class="btn ghost" id="supportHide2h" type="button" title="Tạm ẩn thông báo này trong 2 giờ">Ẩn trong 2 giờ</button>
+        </div>
       </div>
       <p class="support-copy-status" id="supportCopyStatus" aria-live="polite"></p>
       <p class="support-note">Cảm ơn bạn đã ghé thăm và học cùng website 💚</p>
@@ -87,11 +103,13 @@
       if (!overlay) return;
       var dialog = overlay.querySelector('.support-dialog');
       var closeBtn = document.getElementById('supportClose');
-      var laterBtn = document.getElementById('supportLater');
+      var closeOnceBtn = document.getElementById('supportCloseOnce');
+      var hide2hBtn = document.getElementById('supportHide2h');
       var copyBtn = document.getElementById('supportCopy');
       var status = document.getElementById('supportCopyStatus');
       var qr = document.getElementById('supportQr');
       var ACCOUNT = '400172008';
+      var HIDE_KEY = 'mln-support-hide-until';
       var lastFocus = null;
 
       if (qr) {
@@ -101,15 +119,25 @@
         });
       }
 
+      function shouldAutoOpen() {
+        try {
+          var until = Number(localStorage.getItem(HIDE_KEY) || 0);
+          return !until || Date.now() >= until;
+        } catch (e) {
+          return true;
+        }
+      }
+
       function openSupport() {
         if (!overlay.hidden) return;
         lastFocus = document.activeElement;
+        if (status) status.textContent = '';
         overlay.hidden = false;
         document.documentElement.classList.add('support-open');
-        if (laterBtn) { try { laterBtn.focus({ preventScroll: true }); } catch (e) { laterBtn.focus(); } }
+        if (closeOnceBtn) { try { closeOnceBtn.focus({ preventScroll: true }); } catch (e) { closeOnceBtn.focus(); } }
       }
 
-      function closeSupport() {
+      function closeSupportOnce() {
         if (overlay.hidden) return;
         overlay.hidden = true;
         document.documentElement.classList.remove('support-open');
@@ -118,8 +146,17 @@
         }
       }
 
+      function hideSupportFor2Hours() {
+        try {
+          localStorage.setItem(HIDE_KEY, String(Date.now() + 2 * 60 * 60 * 1000));
+        } catch (e) {}
+        closeSupportOnce();
+      }
+
+      window.openSupportModal = openSupport;
+
       function copyAccount() {
-        var done = function () { status.textContent = 'Đã sao chép số tài khoản.'; };
+        var done = function () { status.textContent = '✔ Đã sao chép số tài khoản.'; };
         var fail = function () { status.textContent = 'Bạn hãy sao chép thủ công: ' + ACCOUNT; };
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(ACCOUNT).then(done, fail);
@@ -139,14 +176,15 @@
         } catch (e) { fail(); }
       }
 
-      closeBtn.addEventListener('click', closeSupport);
-      laterBtn.addEventListener('click', closeSupport);
-      copyBtn.addEventListener('click', copyAccount);
-      overlay.addEventListener('click', function (e) { if (e.target === overlay) closeSupport(); });
+      if (closeBtn) closeBtn.addEventListener('click', closeSupportOnce);
+      if (closeOnceBtn) closeOnceBtn.addEventListener('click', closeSupportOnce);
+      if (hide2hBtn) hide2hBtn.addEventListener('click', hideSupportFor2Hours);
+      if (copyBtn) copyBtn.addEventListener('click', copyAccount);
+      overlay.addEventListener('click', function (e) { if (e.target === overlay) closeSupportOnce(); });
 
       document.addEventListener('keydown', function (e) {
         if (overlay.hidden) return;
-        if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); closeSupport(); return; }
+        if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); closeSupportOnce(); return; }
         if (e.key !== 'Tab' || !dialog) return;
         var f = dialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
         if (!f.length) return;
@@ -155,7 +193,9 @@
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
       });
 
-      window.setTimeout(openSupport, 600);
+      if (shouldAutoOpen()) {
+        window.setTimeout(openSupport, 600);
+      }
     })();
   </script>
 </body>
