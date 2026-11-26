@@ -1,6 +1,7 @@
 // 1. CẤU HÌNH FIREBASE CỦA DỰ ÁN TRIET-ML
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
- apiKey: "AIzaSyCX_UWsSB55e5XcILXNjati6GvJkaZON9A",
+  apiKey: "AIzaSyCX_UWsSB55e5XclLXNjAti6GvJkaZON9A",
   authDomain: "triet-ml.firebaseapp.com",
   projectId: "triet-ml",
   storageBucket: "triet-ml.firebasestorage.app",
