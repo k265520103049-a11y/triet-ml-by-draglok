@@ -412,6 +412,9 @@
       if (!silent) sfx.bad();
     }
     bumpActivity();
+    if (typeof window.recordQuizAnswer === 'function') {
+      window.recordQuizAnswer(!!ok);
+    }
   }
 
   function stat(key) {
