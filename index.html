@@ -27,6 +27,24 @@
     </nav>
   </header>
 
+  <!-- Thanh trạng thái Tài khoản & Rank -->
+  <div id="rank-bar" style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:8px 14px; background:rgba(15,23,42,0.88); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:#fff; margin:10px auto 0; width:calc(100% - 24px); max-width:960px; box-sizing:border-box;">
+    <div id="user-info" style="flex:1; min-width:180px; font-size:14px;">
+      Khách • <strong id="rank-badge">🥉 Đồng (0 RP)</strong>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <button id="btn-google-login" onclick="loginWithGoogle()" style="padding:6px 12px; border:none; border-radius:6px; background:#4285F4; color:#fff; font-weight:bold; cursor:pointer;">
+        Đăng nhập / Leo Rank
+      </button>
+      <button id="btn-open-leaderboard" onclick="openLeaderboard()" style="padding:6px 12px; border:none; border-radius:6px; background:#f59e0b; color:#000; font-weight:bold; cursor:pointer;">
+        🏆 BXH
+      </button>
+      <button id="btn-logout" onclick="logoutUser()" style="display:none; padding:6px 10px; border:none; border-radius:6px; background:#ef4444; color:#fff; cursor:pointer;">
+        Thoát
+      </button>
+    </div>
+  </div>
+
   <!-- Thanh trạng thái người chơi: Level, EXP, Danh hiệu, Xu Triết & Nhiệm vụ -->
   <div class="player-bar-wrap">
     <div class="player-bar" id="playerHud" aria-label="Thông tin cấp độ và Xu Triết"></div>
@@ -90,6 +108,17 @@
       <p class="support-copy-status" id="supportCopyStatus" aria-live="polite"></p>
       <p class="support-note">Cảm ơn bạn đã ghé thăm và học cùng website 💚</p>
     </section>
+  </div>
+
+  <!-- Popup Bảng Xếp Hạng -->
+  <div id="leaderboard-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#1e293b; color:#fff; width:92%; max-width:460px; border-radius:14px; padding:18px; max-height:80vh; overflow-y:auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="margin:0;">🏆 Bảng Xếp Hạng Triết Học</h3>
+        <button onclick="document.getElementById('leaderboard-modal').style.display='none'" style="background:none; border:none; color:#fff; font-size:20px; cursor:pointer;">✕</button>
+      </div>
+      <div id="leaderboard-list">Đang tải dữ liệu...</div>
+    </div>
   </div>
 
   <script src="questions.js"></script>
@@ -174,61 +203,3 @@
           document.body.removeChild(ta);
           if (ok) { done(); } else { fail(); }
         } catch (e) { fail(); }
-      }
-
-      if (closeBtn) closeBtn.addEventListener('click', closeSupportOnce);
-      if (closeOnceBtn) closeOnceBtn.addEventListener('click', closeSupportOnce);
-      if (hide2hBtn) hide2hBtn.addEventListener('click', hideSupportFor2Hours);
-      if (copyBtn) copyBtn.addEventListener('click', copyAccount);
-      overlay.addEventListener('click', function (e) { if (e.target === overlay) closeSupportOnce(); });
-
-      document.addEventListener('keydown', function (e) {
-        if (overlay.hidden) return;
-        if (e.key === 'Escape' || e.key === 'Esc') { e.preventDefault(); closeSupportOnce(); return; }
-        if (e.key !== 'Tab' || !dialog) return;
-        var f = dialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-        if (!f.length) return;
-        var first = f[0], last = f[f.length - 1];
-        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-      });
-
-      if (shouldAutoOpen()) {
-        window.setTimeout(openSupport, 600);
-      }
-    })();
-  </script>
-  <!-- Thanh trạng thái Tài khoản & Rank -->
-<div id="rank-bar" style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:rgba(15,23,42,0.85); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:#fff; margin:10px auto; max-width:960px;">
-  <div id="user-info" style="flex:1; font-size:14px;">
-    Khách • <strong id="rank-badge">🥉 Đồng (0 RP)</strong>
-  </div>
-  <button id="btn-google-login" onclick="loginWithGoogle()" style="padding:6px 12px; border:none; border-radius:6px; background:#4285F4; color:#fff; font-weight:bold; cursor:pointer;">
-    Đăng nhập / Leo Rank
-  </button>
-  <button id="btn-open-leaderboard" onclick="openLeaderboard()" style="padding:6px 12px; border:none; border-radius:6px; background:#f59e0b; color:#000; font-weight:bold; cursor:pointer;">
-    🏆 BXH
-  </button>
-  <button id="btn-logout" onclick="logoutUser()" style="display:none; padding:6px 10px; border:none; border-radius:6px; background:#ef4444; color:#fff; cursor:pointer;">
-    Thoát
-  </button>
-</div>
-
-<!-- Popup Bảng Xếp Hạng -->
-<div id="leaderboard-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:9999; align-items:center; justify-content:center;">
-  <div style="background:#1e293b; color:#fff; width:92%; max-width:460px; border-radius:14px; padding:18px; max-height:80vh; overflow-y:auto;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <h3 style="margin:0;">🏆 Bảng Xếp Hạng Triết Học</h3>
-      <button onclick="document.getElementById('leaderboard-modal').style.display='none'" style="background:none; border:none; color:#fff; font-size:20px; cursor:pointer;">✕</button>
-    </div>
-    <div id="leaderboard-list">Đang tải dữ liệu...</div>
-  </div>
-</div>
-
-<!-- Firebase SDK & Logic Leo Rank -->
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-<script src="rank.js"></script>
-</body>
-</html>
