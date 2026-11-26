@@ -1,6 +1,6 @@
 // 1. CẤU HÌNH FIREBASE CỦA DỰ ÁN TRIET-ML
 const firebaseConfig = {
-  apiKey: "AIzaSyCX_UWsSB55e5XclLXNjati6GvJkaZON9A",
+ apiKey: "AIzaSyCX_UWsSB55e5XcILXNjati6GvJkaZON9A",
   authDomain: "triet-ml.firebaseapp.com",
   projectId: "triet-ml",
   storageBucket: "triet-ml.firebasestorage.app",
