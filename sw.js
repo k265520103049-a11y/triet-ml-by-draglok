@@ -1,10 +1,11 @@
 /* Service worker: ưu tiên mạng (luôn lấy bản mới nhất), mất mạng thì dùng bản đã lưu. */
-var CACHE = 'mln-gameshow-v10';
+var CACHE = 'mln-gameshow-v11';
 var FILES = [
   './',
   'index.html',
   'style.css',
   'app.js',
+  'rank.js',
   'questions.js',
   'theory.js',
   'explain.js',
@@ -34,10 +35,17 @@ self.addEventListener('activate', function (e) {
 
 self.addEventListener('fetch', function (e) {
   if (e.request.method !== 'GET') return;
+  try {
+    if (new URL(e.request.url).origin !== self.location.origin) return;
+  } catch (err) {
+    return;
+  }
   e.respondWith(
     fetch(e.request).then(function (r) {
-      var copy = r.clone();
-      caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+      if (r && r.status === 200) {
+        var copy = r.clone();
+        caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+      }
       return r;
     }).catch(function () {
       return caches.match(e.request).then(function (m) { return m || caches.match('index.html'); });

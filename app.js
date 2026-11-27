@@ -128,7 +128,8 @@
       buffs: { x2Until: 0, shieldActive: false },
       daily: { date: dateKey(0), correct: 0, bestStreak: 0, streakNow: 0, games: 0, claimed: {} },
       customQuestions: [],
-      deletedIds: {}
+      deletedIds: {},
+      lastModified: 0
     };
   }
 
@@ -188,6 +189,7 @@
     }
     d.customQuestions = Array.isArray(raw.customQuestions) ? raw.customQuestions : [];
     d.deletedIds = raw.deletedIds && typeof raw.deletedIds === 'object' ? raw.deletedIds : {};
+    d.lastModified = Number(raw.lastModified) || 0;
     return d;
   }
 
@@ -229,11 +231,37 @@
 
   function chapterQs(ch) { return Q.filter(function (q) { return q.ch === ch; }); }
 
-  function save() {
+  function save(skipCloudNotify) {
+    if (!skipCloudNotify) {
+      store.lastModified = Date.now();
+    }
     try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
     updateWrongBadge();
     renderHud();
+    if (!skipCloudNotify && typeof window.notifyAppProgressChanged === 'function') {
+      window.notifyAppProgressChanged();
+    }
   }
+
+  window.applySyncedAppProgress = function (cloudRaw) {
+    store = norm(cloudRaw || {});
+    rebuildQuestionBank();
+    save(true);
+    applyCosmetics();
+    if (!S) {
+      home();
+    }
+  };
+
+  window.resetLocalAppProgress = function () {
+    store = defaults();
+    rebuildQuestionBank();
+    save(true);
+    applyCosmetics();
+    if (!S) {
+      home();
+    }
+  };
 
   /* ---------- Hệ thống Xu Triết, EXP, Level & Nhiệm vụ ngày ---------- */
   function xpNeeded(lv) {
@@ -966,10 +994,33 @@
             h('small', { class: 'muted' }, 'Phát âm thanh nhẹ khi chọn đáp án đúng, sai hoặc hoàn thành vòng chơi.')))),
 
       h('section', { class: 'card settings-card' },
-        h('h2', null, 'Sao lưu & Khôi phục dữ liệu'),
-        h('p', { class: 'muted' }, 'Hiện tại bạn đã làm đúng ' + seenCount + '/' + Q.length + ' câu · ' + store.economy.xu.toLocaleString() + ' Xu Triết · Level ' + store.economy.level + '. Xuất file .json để chuyển dữ liệu sang thiết bị khác.'),
+        h('h2', null, 'Đồng bộ tài khoản & Sao lưu dữ liệu'),
+        (function () {
+          var acc = typeof window.getCloudAccountInfo === 'function' ? window.getCloudAccountInfo() : null;
+          if (acc) {
+            return h('p', { class: 'muted' }, '☁️ Đang tự động đồng bộ lên tài khoản: ', h('b', null, acc.name + (acc.email ? ' (' + acc.email + ')' : '')), '.');
+          }
+          return h('p', { class: 'muted' }, '💡 Bạn đang học ở chế độ Khách. Hãy bấm "Đăng nhập / Leo Rank" ở thanh trên cùng để tự động đồng bộ toàn bộ tiến độ sang điện thoại và máy tính khác.');
+        })(),
+        h('p', { class: 'muted' }, 'Hiện tại bạn đã làm đúng ' + seenCount + '/' + Q.length + ' câu · ' + store.economy.xu.toLocaleString() + ' Xu Triết · Level ' + store.economy.level + '.'),
         fileInput,
         h('div', { class: 'actions' },
+          (typeof window.getCloudAccountInfo === 'function' && window.getCloudAccountInfo())
+            ? h('button', {
+                class: 'btn gold',
+                onclick: async function () {
+                  if (typeof window.forceCloudSync === 'function') {
+                    var ok = await window.forceCloudSync();
+                    toast(ok ? '☁️ Đã đồng bộ tiến độ lên tài khoản!' : '⚠️ Không thể đồng bộ lúc này, hãy kiểm tra mạng.', ok ? 'ok' : 'bad');
+                  }
+                }
+              }, '☁️ Đồng bộ ngay')
+            : h('button', {
+                class: 'btn gold',
+                onclick: function () {
+                  if (typeof window.loginWithGoogle === 'function') window.loginWithGoogle();
+                }
+              }, '🔐 Đăng nhập để đồng bộ'),
           h('button', { class: 'btn primary', onclick: exportBackup }, '⬇ Xuất file sao lưu (.json)'),
           h('button', { class: 'btn', onclick: function () { fileInput.click(); } }, '⬆ Nhập file khôi phục (.json)'),
           h('span', { class: 'spacer' }),
@@ -3035,7 +3086,11 @@
   window.addEventListener('pagehide', saveSession);
   document.addEventListener('visibilitychange', function () { if (document.hidden) saveSession(); });
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
-    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').then(function (reg) {
+        if (reg && typeof reg.update === 'function') reg.update().catch(function () {});
+      }).catch(function () {});
+    });
   }
   applyCosmetics();
   updateWrongBadge();
