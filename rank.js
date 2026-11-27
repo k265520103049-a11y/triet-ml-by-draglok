@@ -406,12 +406,30 @@ function mergeAppProgress(localObj, cloudObj) {
   const pInv = primary.inventory || {};
   const sInv = secondary.inventory || {};
   merged.inventory = {
+    uiThemes: unionUniqueArray(sInv.uiThemes, pInv.uiThemes),
     bgs: unionUniqueArray(sInv.bgs, pInv.bgs),
     palettes: unionUniqueArray(sInv.palettes, pInv.palettes),
     frames: unionUniqueArray(sInv.frames, pInv.frames),
     titles: unionUniqueArray(sInv.titles, pInv.titles),
+    customBgUnlocked: !!(sInv.customBgUnlocked || pInv.customBgUnlocked),
     items: Object.assign({ f50: 0, hint: 0, x2: 0, shield: 0 }, pInv.items || {})
   };
+
+  const pEq = primary.equipped || {};
+  const sEq = secondary.equipped || {};
+  merged.equipped = Object.assign({
+    uiTheme: 'default',
+    bg: 'default',
+    palette: 'default',
+    frame: 'default',
+    title: 'Tập sự Tư duy',
+    customBgData: '',
+    customBgDim: 38,
+    customBgBlur: 0
+  }, pEq);
+  if (!merged.equipped.customBgData && sEq.customBgData) {
+    merged.equipped.customBgData = sEq.customBgData;
+  }
 
   // Gộp câu hỏi tự thêm theo ID
   const qMap = {};

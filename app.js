@@ -47,6 +47,14 @@
 
   /* ---------- Dữ liệu Cửa hàng & Nhiệm vụ ngày ---------- */
   var SHOP_CATALOG = {
+    uiTheme: [
+      { id: 'default', name: 'Tiêu chuẩn Hiện đại', price: 0, preview: 'thm-default', desc: 'Giao diện mặc định bo góc sạch sẽ, cân đối.' },
+      { id: 'liquid-glass', name: 'Liquid Glass (Kính Lỏng)', price: 450, preview: 'thm-liquid-glass', desc: 'Hiệu ứng kính mờ trong suốt phản quang 3D sang trọng.' },
+      { id: 'pixel', name: 'Pixel Retro 8-Bit', price: 420, preview: 'thm-pixel', desc: 'Phong cách máy chơi game cổ điển vuông vức, bóng đổ cứng.' },
+      { id: 'kitty', name: 'Kitty Kawaii Pastel', price: 480, preview: 'thm-kitty', desc: 'Tông hồng dâu ngọt ngào, bo tròn mềm mại kèm nơ dễ thương.' },
+      { id: 'classic', name: 'Cổ điển Học thuật', price: 400, preview: 'thm-classic', desc: 'Nền giấy ngà ấm áp cùng kiểu chữ sách triết học kinh điển.' },
+      { id: 'cyberpunk', name: 'Cyberpunk 2077 Neon', price: 550, preview: 'thm-cyberpunk', desc: 'Nền đêm công nghệ sâu với viền phát sáng neon cyan & magenta.' }
+    ],
     bg: [
       { id: 'default', name: 'Mặc định Thanh lịch', price: 0, preview: 'bg-default', desc: 'Nền tiêu chuẩn tối giản, dịu mắt khi ôn bài lâu.' },
       { id: 'sunrise', name: 'Bình minh Cách mạng', price: 120, preview: 'bg-sunrise', desc: 'Ánh đỏ cam ấm áp đầy nhiệt huyết lý luận.' },
@@ -118,13 +126,24 @@
       settings: { shuffleOpts: true, theme: 'auto', mixLimit: 0, sound: true },
       economy: { xu: 100, exp: 0, level: 1, totalXuEarned: 100 },
       inventory: {
+        uiThemes: ['default'],
         bgs: ['default'],
         palettes: ['default'],
         frames: ['default'],
         titles: ['Tập sự Tư duy'],
+        customBgUnlocked: false,
         items: { f50: 1, hint: 1, x2: 0, shield: 0 }
       },
-      equipped: { bg: 'default', palette: 'default', frame: 'default', title: 'Tập sự Tư duy' },
+      equipped: {
+        uiTheme: 'default',
+        bg: 'default',
+        palette: 'default',
+        frame: 'default',
+        title: 'Tập sự Tư duy',
+        customBgData: '',
+        customBgDim: 38,
+        customBgBlur: 0
+      },
       buffs: { x2Until: 0, shieldActive: false },
       daily: { date: dateKey(0), correct: 0, bestStreak: 0, streakNow: 0, games: 0, claimed: {} },
       customQuestions: [],
@@ -162,6 +181,8 @@
       };
     }
     if (raw.inventory && typeof raw.inventory === 'object') {
+      d.inventory.uiThemes = Array.isArray(raw.inventory.uiThemes) && raw.inventory.uiThemes.length ? raw.inventory.uiThemes : ['default'];
+      d.inventory.customBgUnlocked = !!raw.inventory.customBgUnlocked;
       d.inventory.bgs = Array.isArray(raw.inventory.bgs) && raw.inventory.bgs.length ? raw.inventory.bgs : ['default'];
       d.inventory.palettes = Array.isArray(raw.inventory.palettes) && raw.inventory.palettes.length ? raw.inventory.palettes : ['default'];
       d.inventory.frames = Array.isArray(raw.inventory.frames) && raw.inventory.frames.length ? raw.inventory.frames : ['default'];
@@ -389,7 +410,7 @@
         h('button', {
           class: 'xu-pill', type: 'button',
           title: 'Mở Cửa hàng Xu Triết để mua Background & vật phẩm',
-          onclick: function () { shopPage('bg'); }
+          onclick: function () { shopPage('uiTheme'); }
         }, '🪙 ' + eco.xu.toLocaleString() + ' Xu Triết'))
     );
   }
@@ -636,16 +657,69 @@
   }
 
   var previewTimer = null;
+  var pendingCustomWallpaper = '';
+
   function applyCosmetics(override) {
     var root = document.documentElement;
     root.setAttribute('data-theme', store.settings.theme || 'auto');
+
+    var uiTheme = (override && override.uiTheme !== undefined) ? override.uiTheme : (store.equipped.uiTheme || 'default');
     var bg = (override && override.bg !== undefined) ? override.bg : (store.equipped.bg || 'default');
     var pal = (override && override.palette !== undefined) ? override.palette : (store.equipped.palette || 'default');
     var frm = (override && override.frame !== undefined) ? override.frame : (store.equipped.frame || 'default');
+    var customData = (override && override.customBgData !== undefined) ? override.customBgData : (store.equipped.customBgData || '');
+    var dim = (override && override.customBgDim !== undefined) ? override.customBgDim : (Number(store.equipped.customBgDim) || 38);
+    var blur = (override && override.customBgBlur !== undefined) ? override.customBgBlur : (Number(store.equipped.customBgBlur) || 0);
 
-    if (bg && bg !== 'default') root.setAttribute('data-bg', bg); else root.removeAttribute('data-bg');
+    if (uiTheme && uiTheme !== 'default') root.setAttribute('data-ui-theme', uiTheme);
+    else root.removeAttribute('data-ui-theme');
+
+    if (bg === 'custom' && customData) {
+      root.setAttribute('data-bg', 'custom');
+      root.style.setProperty('--custom-bg-url', 'url("' + customData.replace(/"/g, '\\"') + '")');
+      root.style.setProperty('--custom-bg-dim', (Math.min(85, Math.max(0, dim)) / 100).toFixed(2));
+      root.style.setProperty('--custom-bg-blur', Math.min(20, Math.max(0, blur)) + 'px');
+    } else {
+      root.style.removeProperty('--custom-bg-url');
+      root.style.removeProperty('--custom-bg-dim');
+      root.style.removeProperty('--custom-bg-blur');
+      if (bg && bg !== 'default' && bg !== 'custom') root.setAttribute('data-bg', bg);
+      else root.removeAttribute('data-bg');
+    }
+
     if (pal && pal !== 'default') root.setAttribute('data-palette', pal); else root.removeAttribute('data-palette');
     if (frm && frm !== 'default') root.setAttribute('data-frame', frm); else root.removeAttribute('data-frame');
+  }
+
+  function compressCustomWallpaper(file, done) {
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var img = new Image();
+      img.onload = function () {
+        var maxSide = 1280;
+        var w = img.width, h = img.height;
+        if (w > maxSide || h > maxSide) {
+          if (w >= h) { h = Math.round(h * maxSide / w); w = maxSide; }
+          else { w = Math.round(w * maxSide / h); h = maxSide; }
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        var quality = 0.78;
+        var dataUrl = canvas.toDataURL('image/jpeg', quality);
+        while (dataUrl.length > 360000 && quality > 0.42) {
+          quality -= 0.12;
+          dataUrl = canvas.toDataURL('image/jpeg', quality);
+        }
+        done(null, dataUrl);
+      };
+      img.onerror = function () { done('Không đọc được tệp ảnh này.'); };
+      img.src = ev.target.result;
+    };
+    reader.onerror = function () { done('Lỗi tải ảnh từ thiết bị.'); };
+    reader.readAsDataURL(file);
   }
 
   function previewCosmetic(type, id, name) {
@@ -1781,9 +1855,10 @@
   function shopPage(activeTab) {
     stopTimer(); S = null;
     setNav('navShop');
-    activeTab = activeTab || 'bg';
+    activeTab = activeTab || 'uiTheme';
 
     var tabsMeta = [
+      { id: 'uiTheme', label: '✨ Giao diện (Theme)' },
       { id: 'bg', label: '🎨 Hình nền (Background)' },
       { id: 'palette', label: '🖌️ Bảng màu' },
       { id: 'frame', label: '🖼️ Khung thẻ bài' },
@@ -1855,8 +1930,8 @@
               : null));
       }
 
-      var invMap = { bg: 'bgs', palette: 'palettes', frame: 'frames', title: 'titles' };
-      var eqMap = { bg: 'bg', palette: 'palette', frame: 'frame', title: 'title' };
+      var invMap = { uiTheme: 'uiThemes', bg: 'bgs', palette: 'palettes', frame: 'frames', title: 'titles' };
+      var eqMap = { uiTheme: 'uiTheme', bg: 'bg', palette: 'palette', frame: 'frame', title: 'title' };
       var ownedList = store.inventory[invMap[activeTab]] || [];
       var owned = ownedList.indexOf(entry.id) >= 0;
       var equipped = store.equipped[eqMap[activeTab]] === entry.id;
@@ -1908,12 +1983,120 @@
             : null));
     });
 
+    /* Thẻ đặc biệt: Đổi Ảnh Nền Tùy Chỉnh (1.800 Xu) trong tab Background */
+    if (activeTab === 'bg') {
+      var CUSTOM_BG_PRICE = 1800;
+      var unlocked = !!store.inventory.customBgUnlocked;
+      var hasImg = !!store.equipped.customBgData;
+      var isCustomEquipped = store.equipped.bg === 'custom' && hasImg;
+
+      var fileInput = h('input', {
+        type: 'file',
+        accept: 'image/*',
+        style: 'display:none',
+        onchange: function (e) {
+          var file = e.target.files && e.target.files[0];
+          if (!file) return;
+          compressCustomWallpaper(file, function (err, dataUrl) {
+            if (err) { toast(err, 'bad'); return; }
+            if (unlocked) {
+              store.equipped.customBgData = dataUrl;
+              store.equipped.bg = 'custom';
+              applyCosmetics();
+              save();
+              toast('🖼️ Đã cập nhật ảnh nền cá nhân!', 'ok');
+              shopPage('bg');
+            } else {
+              pendingCustomWallpaper = dataUrl;
+              clearTimeout(previewTimer);
+              applyCosmetics({ bg: 'custom', customBgData: dataUrl });
+              toast('👁 Đang xem thử ảnh của bạn trong 6 giây! Bấm Mở khóa (1.800 Xu) để lưu vĩnh viễn.', 'info');
+              previewTimer = setTimeout(function () { applyCosmetics(); }, 6000);
+            }
+          });
+        }
+      });
+
+      var unlockCustomBg = function () {
+        if (store.economy.xu < CUSTOM_BG_PRICE) {
+          toast('Không đủ Xu Triết! Cần ' + CUSTOM_BG_PRICE.toLocaleString() + ' Xu Triết để mở khóa.', 'bad');
+          return;
+        }
+        store.economy.xu -= CUSTOM_BG_PRICE;
+        store.inventory.customBgUnlocked = true;
+        if (pendingCustomWallpaper) {
+          store.equipped.customBgData = pendingCustomWallpaper;
+          pendingCustomWallpaper = '';
+        }
+        if (store.equipped.customBgData) store.equipped.bg = 'custom';
+        applyCosmetics();
+        sfx.win();
+        launchConfetti(36);
+        save();
+        toast('🎉 Đã mở khóa tính năng Đổi Ảnh Nền Tùy Chỉnh vĩnh viễn!', 'ok');
+        shopPage('bg');
+      };
+
+      var dimLabel = h('span', null, 'Độ tối lớp phủ bảo vệ chữ (' + (store.equipped.customBgDim || 38) + '%)');
+      var dimSlider = h('input', {
+        type: 'range', min: '0', max: '80', value: String(store.equipped.customBgDim || 38),
+        oninput: function (e) {
+          var v = Number(e.target.value);
+          store.equipped.customBgDim = v;
+          dimLabel.textContent = 'Độ tối lớp phủ bảo vệ chữ (' + v + '%)';
+          applyCosmetics();
+        },
+        onchange: function () { save(); }
+      });
+
+      var blurLabel = h('span', null, 'Độ làm mờ ảnh nền (' + (store.equipped.customBgBlur || 0) + 'px)');
+      var blurSlider = h('input', {
+        type: 'range', min: '0', max: '16', value: String(store.equipped.customBgBlur || 0),
+        oninput: function (e) {
+          var v = Number(e.target.value);
+          store.equipped.customBgBlur = v;
+          blurLabel.textContent = 'Độ làm mờ ảnh nền (' + v + 'px)';
+          applyCosmetics();
+        },
+        onchange: function () { save(); }
+      });
+
+      cards.unshift(
+        h('div', { class: 'card shop-item custom-bg-panel' + (isCustomEquipped ? ' equipped' : '') },
+          fileInput,
+          h('div', { class: 'row between' },
+            h('div', null,
+              h('div', { class: 'eyebrow' }, 'ĐẶC QUYỀN VIP • TẢI ẢNH TỪ ĐIỆN THOẠI / MÁY TÍNH'),
+              h('h3', { style: 'margin:0' }, '🖼️ Ảnh nền Cá nhân Tùy chỉnh')),
+            unlocked
+              ? h('span', { class: 'chip ok-t' }, isCustomEquipped ? '✔ Đang dùng ảnh cá nhân' : '✔ Đã mở khóa vĩnh viễn')
+              : h('span', { class: 'chip' }, '🪙 ' + CUSTOM_BG_PRICE.toLocaleString() + ' Xu')),
+          h('p', { class: 'muted small', style: 'margin:0' },
+            'Tải lên bất kỳ bức ảnh nào từ thiết bị của bạn làm hình nền toàn trang. Hỗ trợ tự động nén nhẹ để đồng bộ Cloud & tùy chỉnh độ tối/mờ giúp chữ luôn sắc nét.'),
+          unlocked ? h('div', { class: 'custom-bg-controls' },
+            h('label', { class: 'field-label' }, dimLabel, dimSlider),
+            h('label', { class: 'field-label' }, blurLabel, blurSlider)) : null,
+          h('div', { class: 'shop-actions' },
+            unlocked
+              ? [
+                  h('button', { class: 'btn primary', onclick: function () { fileInput.click(); } }, '📁 Chọn ảnh từ máy'),
+                  hasImg && !isCustomEquipped
+                    ? h('button', { class: 'btn', onclick: function () { store.equipped.bg = 'custom'; applyCosmetics(); save(); shopPage('bg'); } }, '✨ Bật ảnh đã lưu')
+                    : null
+                ]
+              : [
+                  h('button', { class: 'btn gold', onclick: unlockCustomBg }, '🪙 Mở khóa (1.800 Xu)'),
+                  h('button', { class: 'btn ghost', onclick: function () { fileInput.click(); } }, '👁 Chọn ảnh xem thử trước')
+                ]))
+      );
+    }
+
     mount(h('div', { class: 'stack' },
       h('div', { class: 'card shop-hero' },
         h('div', null,
           h('div', { class: 'eyebrow' }, 'CỬA HÀNG ĐỔI THƯỞNG XU TRIẾT'),
           h('h1', { style: 'margin:0 0 6px' }, '🏪 Cửa hàng Giao diện & Vật phẩm'),
-          h('p', { class: 'muted', style: 'margin:0' }, 'Dùng Xu Triết kiếm được từ luyện tập, nhiệm vụ ngày và Gameshow để mở khóa hình nền (Background), bảng màu, khung thẻ câu hỏi và vật phẩm trợ giúp.')),
+          h('p', { class: 'muted', style: 'margin:0' }, 'Mở khóa dàn Theme (Liquid Glass, Pixel, Kitty, Cổ điển, Cyberpunk), ảnh nền cá nhân 1.800 Xu và vật phẩm trợ giúp.')),
         h('div', { class: 'row' },
           h('span', { class: 'xu-pill', style: 'font-size:1rem;padding:8px 16px' }, '🪙 Số dư: ' + store.economy.xu.toLocaleString() + ' Xu Triết'),
           h('button', { class: 'btn ghost', onclick: home }, '← Trang chủ'))),

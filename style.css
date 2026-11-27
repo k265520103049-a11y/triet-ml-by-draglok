@@ -526,3 +526,252 @@ html.support-open,html.support-open body{overflow:hidden}
 @media(max-width:560px){
   .shop-grid,.q-form-grid{grid-template-columns:1fr}
 }
+/* ==========================================================================
+ * 5 THEME GIAO DIỆN TOÀN DIỆN (Liquid Glass, Pixel, Kitty, Cổ điển, Cyberpunk)
+ * ========================================================================== */
+
+/* --- 1. Liquid Glass (Kính Lỏng) --- */
+:root[data-ui-theme="liquid-glass"] body{
+  background:
+    radial-gradient(circle at 15% 15%,rgba(56,189,248,.22),transparent 42%),
+    radial-gradient(circle at 85% 20%,rgba(168,85,247,.20),transparent 45%),
+    radial-gradient(circle at 50% 85%,rgba(236,72,153,.16),transparent 48%),
+    var(--bg);
+  background-attachment:fixed;
+}
+:root[data-ui-theme="liquid-glass"] .topbar,
+:root[data-ui-theme="liquid-glass"] .player-bar,
+:root[data-ui-theme="liquid-glass"] .card,
+:root[data-ui-theme="liquid-glass"] .hero,
+:root[data-ui-theme="liquid-glass"] .kpi-card,
+:root[data-ui-theme="liquid-glass"] .opt,
+:root[data-ui-theme="liquid-glass"] .quest-card,
+:root[data-ui-theme="liquid-glass"] .confirm-dialog,
+:root[data-ui-theme="liquid-glass"] .support-dialog{
+  background:color-mix(in srgb,var(--panel) 62%,transparent);
+  -webkit-backdrop-filter:blur(18px) saturate(165%);
+  backdrop-filter:blur(18px) saturate(165%);
+  border:1px solid rgba(255,255,255,.42);
+  box-shadow:0 10px 34px rgba(15,23,42,.12),inset 0 1px 1px rgba(255,255,255,.55);
+  border-radius:22px;
+}
+:root[data-theme="dark"][data-ui-theme="liquid-glass"] .card,
+:root[data-theme="dark"][data-ui-theme="liquid-glass"] .hero,
+:root[data-theme="dark"][data-ui-theme="liquid-glass"] .topbar,
+:root[data-theme="dark"][data-ui-theme="liquid-glass"] .player-bar{
+  border-color:rgba(255,255,255,.16);
+  box-shadow:0 12px 38px rgba(0,0,0,.42),inset 0 1px 1px rgba(255,255,255,.16);
+}
+
+/* --- 2. Pixel Retro 8-Bit --- */
+:root[data-ui-theme="pixel"] .topbar,
+:root[data-ui-theme="pixel"] .player-bar,
+:root[data-ui-theme="pixel"] .card,
+:root[data-ui-theme="pixel"] .hero,
+:root[data-ui-theme="pixel"] .kpi-card,
+:root[data-ui-theme="pixel"] .opt,
+:root[data-ui-theme="pixel"] .btn,
+:root[data-ui-theme="pixel"] .chip,
+:root[data-ui-theme="pixel"] .quest-card,
+:root[data-ui-theme="pixel"] .shop-preview,
+:root[data-ui-theme="pixel"] .search{
+  border-radius:2px !important;
+  border:2.5px solid var(--ink) !important;
+  box-shadow:4px 4px 0 var(--ink) !important;
+}
+:root[data-ui-theme="pixel"] .btn:active:not(:disabled),
+:root[data-ui-theme="pixel"] .opt:active:not(:disabled){
+  transform:translate(2px,2px) !important;
+  box-shadow:2px 2px 0 var(--ink) !important;
+}
+:root[data-ui-theme="pixel"] .brand,
+:root[data-ui-theme="pixel"] h1,
+:root[data-ui-theme="pixel"] h2,
+:root[data-ui-theme="pixel"] h3,
+:root[data-ui-theme="pixel"] .lvl-badge,
+:root[data-ui-theme="pixel"] .xu-pill{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  letter-spacing:.02em;
+}
+
+/* --- 3. Kitty Kawaii Pastel --- */
+:root[data-ui-theme="kitty"]{
+  --accent:#ec4899;
+  --gold:#f59e0b;
+}
+:root[data-ui-theme="kitty"] body{
+  background-color:#fff5f9;
+  background-image:
+    radial-gradient(#fbcfe8 2px,transparent 2px),
+    radial-gradient(#f9a8d4 1.5px,#fff5f9 1.5px);
+  background-size:36px 36px;
+  background-position:0 0,18px 18px;
+}
+:root[data-theme="dark"][data-ui-theme="kitty"] body{
+  background-color:#23131d;
+  background-image:radial-gradient(rgba(244,114,182,.16) 2px,transparent 2px);
+  background-size:32px 32px;
+}
+:root[data-ui-theme="kitty"] .card,
+:root[data-ui-theme="kitty"] .hero,
+:root[data-ui-theme="kitty"] .player-bar,
+:root[data-ui-theme="kitty"] .kpi-card{
+  border-radius:26px;
+  border:2px solid color-mix(in srgb,#ec4899 35%,var(--line));
+  box-shadow:0 8px 24px rgba(236,72,153,.12);
+}
+:root[data-ui-theme="kitty"] .opt,
+:root[data-ui-theme="kitty"] .btn{
+  border-radius:18px;
+}
+:root[data-ui-theme="kitty"] .hero h1::after,
+:root[data-ui-theme="kitty"] .qcard .qmeta::after{
+  content:" 🎀";
+}
+
+/* --- 4. Cổ điển Học thuật (Giấy Sách Triết) --- */
+:root[data-ui-theme="classic"]{
+  --bg:#f4ede0;
+  --panel:#fbf7ef;
+  --ink:#2c2219;
+  --muted:#6c5c4c;
+  --line:#d6c7b2;
+  --accent:#8b1e1e;
+  --gold:#b47b12;
+}
+:root[data-theme="dark"][data-ui-theme="classic"]{
+  --bg:#1c1713;
+  --panel:#26201a;
+  --ink:#efe6d5;
+  --muted:#b3a38e;
+  --line:#45392c;
+  --accent:#d96b52;
+}
+:root[data-ui-theme="classic"] h1,
+:root[data-ui-theme="classic"] h2,
+:root[data-ui-theme="classic"] h3,
+:root[data-ui-theme="classic"] .qtext,
+:root[data-ui-theme="classic"] .brand{
+  font-family:Georgia,"Times New Roman",Times,serif;
+}
+:root[data-ui-theme="classic"] .card,
+:root[data-ui-theme="classic"] .hero{
+  border-radius:8px;
+  border:1.5px solid var(--line);
+  box-shadow:inset 0 0 0 3px var(--panel),inset 0 0 0 4px color-mix(in srgb,var(--accent) 24%,transparent),var(--shadow);
+}
+
+/* --- 5. Cyberpunk 2077 Neon --- */
+:root[data-ui-theme="cyberpunk"]{
+  --bg:#070a14;
+  --panel:#0e1428;
+  --ink:#e2f1ff;
+  --muted:#8ba3c7;
+  --line:#1f325c;
+  --accent:#00f5d4;
+  --accent-ink:#041318;
+  --gold:#ff2a85;
+}
+:root[data-ui-theme="cyberpunk"] body{
+  background-color:#070a14;
+  background-image:
+    linear-gradient(to right,rgba(0,245,212,.08) 1px,transparent 1px),
+    linear-gradient(to bottom,rgba(255,42,133,.08) 1px,transparent 1px),
+    radial-gradient(circle at 85% 15%,rgba(255,42,133,.18),transparent 45%);
+  background-size:28px 28px,28px 28px,100% 100%;
+  background-attachment:fixed;
+}
+:root[data-ui-theme="cyberpunk"] .card,
+:root[data-ui-theme="cyberpunk"] .hero,
+:root[data-ui-theme="cyberpunk"] .player-bar,
+:root[data-ui-theme="cyberpunk"] .topbar{
+  border:1px solid rgba(0,245,212,.45);
+  box-shadow:0 0 18px rgba(0,245,212,.12),inset 0 0 12px rgba(255,42,133,.08);
+  border-radius:6px;
+}
+:root[data-ui-theme="cyberpunk"] .btn.primary{
+  box-shadow:0 0 14px rgba(0,245,212,.45);
+}
+
+/* ==========================================================================
+ * ẢNH NỀN TÙY CHỈNH CỦA NGƯỜI DÙNG (1.800 XU)
+ * ========================================================================== */
+:root[data-bg="custom"] body::before{
+  content:"";
+  position:fixed;
+  inset:-16px;
+  z-index:-2;
+  background-image:var(--custom-bg-url);
+  background-size:cover;
+  background-position:center;
+  background-repeat:no-repeat;
+  filter:blur(var(--custom-bg-blur,0px));
+  transform:scale(1.03);
+}
+:root[data-bg="custom"] body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  background:rgba(10,14,24,var(--custom-bg-dim,0.38));
+  pointer-events:none;
+}
+:root[data-bg="custom"] .card,
+:root[data-bg="custom"] .hero,
+:root[data-bg="custom"] .player-bar,
+:root[data-bg="custom"] .topbar{
+  background:color-mix(in srgb,var(--panel) 88%,transparent);
+  -webkit-backdrop-filter:blur(10px);
+  backdrop-filter:blur(10px);
+}
+
+/* Preview cards cho dàn Theme trong Cửa hàng */
+.shop-preview.thm-default{background:var(--bg);color:var(--ink)}
+.shop-preview.thm-liquid-glass{
+  background:linear-gradient(135deg,rgba(56,189,248,.32),rgba(168,85,247,.32));
+  border:1px solid rgba(255,255,255,.65);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.75);
+  color:var(--ink);
+}
+.shop-preview.thm-pixel{
+  border-radius:2px;
+  border:2.5px solid #1e2436;
+  box-shadow:4px 4px 0 #1e2436;
+  background:#fde047;
+  color:#1e2436;
+  font-family:monospace;
+}
+.shop-preview.thm-kitty{
+  border-radius:24px;
+  background:linear-gradient(135deg,#fce7f3,#fbcfe8);
+  border:2px solid #f472b6;
+  color:#be185d;
+}
+.shop-preview.thm-classic{
+  border-radius:6px;
+  background:#f4ede0;
+  border:2px solid #8b1e1e;
+  color:#2c2219;
+  font-family:Georgia,serif;
+}
+.shop-preview.thm-cyberpunk{
+  border-radius:4px;
+  background:#070a14;
+  border:1.5px solid #00f5d4;
+  box-shadow:0 0 14px rgba(0,245,212,.35);
+  color:#00f5d4;
+}
+.custom-bg-panel{
+  grid-column:1/-1;
+  border:2px dashed color-mix(in srgb,var(--gold) 65%,var(--line));
+  background:linear-gradient(135deg,color-mix(in srgb,var(--gold) 8%,var(--panel)),var(--panel));
+}
+.custom-bg-controls{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  margin-top:8px;
+}
+@media(max-width:650px){
+  .custom-bg-controls{grid-template-columns:1fr}
+}
