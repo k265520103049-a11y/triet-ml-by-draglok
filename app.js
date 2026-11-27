@@ -48,12 +48,12 @@
   /* ---------- Dữ liệu Cửa hàng & Nhiệm vụ ngày ---------- */
   var SHOP_CATALOG = {
     uiTheme: [
-      { id: 'default', name: 'Tiêu chuẩn Hiện đại', price: 0, preview: 'thm-default', desc: 'Giao diện mặc định bo góc sạch sẽ, cân đối.' },
-      { id: 'liquid-glass', name: 'Liquid Glass (Kính Lỏng)', price: 450, preview: 'thm-liquid-glass', desc: 'Hiệu ứng kính mờ trong suốt phản quang 3D sang trọng.' },
-      { id: 'pixel', name: 'Pixel Retro 8-Bit', price: 420, preview: 'thm-pixel', desc: 'Phong cách máy chơi game cổ điển vuông vức, bóng đổ cứng.' },
-      { id: 'kitty', name: 'Kitty Kawaii Pastel', price: 480, preview: 'thm-kitty', desc: 'Tông hồng dâu ngọt ngào, bo tròn mềm mại kèm nơ dễ thương.' },
-      { id: 'classic', name: 'Cổ điển Học thuật', price: 400, preview: 'thm-classic', desc: 'Nền giấy ngà ấm áp cùng kiểu chữ sách triết học kinh điển.' },
-      { id: 'cyberpunk', name: 'Cyberpunk 2077 Neon', price: 550, preview: 'thm-cyberpunk', desc: 'Nền đêm công nghệ sâu với viền phát sáng neon cyan & magenta.' }
+      { id: 'default', name: 'Tiêu chuẩn', price: 0, preview: 'thm-default', desc: 'Giao diện mặc định bo góc sạch sẽ, cân đối.' },
+      { id: 'classic', name: 'Cổ điển', price: 800, preview: 'thm-classic', desc: 'Nền giấy ngà ấm áp cùng kiểu chữ sách triết học kinh điển.' },
+      { id: 'kitty', name: 'Kitty', price: 1000, preview: 'thm-kitty', desc: 'Tông hồng dâu ngọt ngào, bo tròn mềm mại kèm nơ dễ thương.' },
+      { id: 'liquid-glass', name: 'Liquid', price: 1200, preview: 'thm-liquid-glass', desc: 'Hiệu ứng kính mờ trong suốt phản quang 3D sang trọng.' },
+      { id: 'cyberpunk', name: 'Cyberpunk', price: 1500, preview: 'thm-cyberpunk', desc: 'Nền đêm công nghệ sâu với viền phát sáng neon cyan & magenta.' },
+      { id: 'pixel', name: 'Pixel', price: 2000, preview: 'thm-pixel', desc: 'Biến toàn bộ font chữ thành kiểu Minecraft cùng giao diện khối vuông 3D.' }
     ],
     bg: [
       { id: 'default', name: 'Mặc định Thanh lịch', price: 0, preview: 'bg-default', desc: 'Nền tiêu chuẩn tối giản, dịu mắt khi ôn bài lâu.' },
@@ -2096,7 +2096,7 @@
         h('div', null,
           h('div', { class: 'eyebrow' }, 'CỬA HÀNG ĐỔI THƯỞNG XU TRIẾT'),
           h('h1', { style: 'margin:0 0 6px' }, '🏪 Cửa hàng Giao diện & Vật phẩm'),
-          h('p', { class: 'muted', style: 'margin:0' }, 'Mở khóa dàn Theme (Liquid Glass, Pixel, Kitty, Cổ điển, Cyberpunk), ảnh nền cá nhân 1.800 Xu và vật phẩm trợ giúp.')),
+          h('p', { class: 'muted', style: 'margin:0' }, 'Mở khóa dàn Theme (Cổ điển, Kitty, Liquid, Cyberpunk, Pixel), ảnh nền cá nhân 1.800 Xu và vật phẩm trợ giúp.')),
         h('div', { class: 'row' },
           h('span', { class: 'xu-pill', style: 'font-size:1rem;padding:8px 16px' }, '🪙 Số dư: ' + store.economy.xu.toLocaleString() + ' Xu Triết'),
           h('button', { class: 'btn ghost', onclick: home }, '← Trang chủ'))),

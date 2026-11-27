@@ -563,35 +563,141 @@ html.support-open,html.support-open body{overflow:hidden}
   box-shadow:0 12px 38px rgba(0,0,0,.42),inset 0 1px 1px rgba(255,255,255,.16);
 }
 
-/* --- 2. Pixel Retro 8-Bit --- */
+/* --- 2. Pixel (Minecraft Edition - 2.000 Xu) --- */
+:root[data-ui-theme="pixel"]{
+  --bg:#e4e7ec;
+  --panel:#f4f5f7;
+  --ink:#1b1f2a;
+  --muted:#525b6e;
+  --line:#9ba3b4;
+  --accent:#3c8527;
+  --accent-ink:#ffffff;
+  --gold:#d97706;
+  --px-bevel-light:#ffffff;
+  --px-bevel-dark:#8c95a6;
+  --px-drop:#6c7587;
+  --px-btn-bg:#dcdfe6;
+  --px-btn-light:#ffffff;
+  --px-btn-dark:#8d96a8;
+  --px-green:#3c8527;
+  --px-green-light:#6bc349;
+  --px-green-dark:#224d16;
+}
+:root[data-theme="dark"][data-ui-theme="pixel"]{
+  --bg:#14171f;
+  --panel:#1f2430;
+  --ink:#f1f5f9;
+  --muted:#9aa5b8;
+  --line:#3a4356;
+  --accent:#4ea832;
+  --accent-ink:#ffffff;
+  --gold:#fbbf24;
+  --px-bevel-light:#465066;
+  --px-bevel-dark:#0d1017;
+  --px-drop:#090b10;
+  --px-btn-bg:#2a3140;
+  --px-btn-light:#4d5870;
+  --px-btn-dark:#10141c;
+  --px-green:#3c8527;
+  --px-green-light:#6bc349;
+  --px-green-dark:#1f4614;
+}
+@media(prefers-color-scheme:dark){
+  :root[data-theme="auto"][data-ui-theme="pixel"]{
+    --bg:#14171f;
+    --panel:#1f2430;
+    --ink:#f1f5f9;
+    --muted:#9aa5b8;
+    --line:#3a4356;
+    --accent:#4ea832;
+    --accent-ink:#ffffff;
+    --gold:#fbbf24;
+    --px-bevel-light:#465066;
+    --px-bevel-dark:#0d1017;
+    --px-drop:#090b10;
+    --px-btn-bg:#2a3140;
+    --px-btn-light:#4d5870;
+    --px-btn-dark:#10141c;
+    --px-green:#3c8527;
+    --px-green-light:#6bc349;
+    --px-green-dark:#1f4614;
+  }
+}
+
+/* Đổi toàn bộ font chữ trên web sang font Minecraft (Pixelify Sans) */
+:root[data-ui-theme="pixel"] body,
+:root[data-ui-theme="pixel"] body *,
+:root[data-ui-theme="pixel"] button,
+:root[data-ui-theme="pixel"] input,
+:root[data-ui-theme="pixel"] select,
+:root[data-ui-theme="pixel"] textarea{
+  font-family:'Pixelify Sans','VT323',monospace !important;
+  letter-spacing:.02em;
+}
+
+/* Nền lưới khối vuông Minecraft tinh tế */
+:root[data-ui-theme="pixel"] body{
+  background-color:var(--bg);
+  background-image:
+    linear-gradient(to right,rgba(128,140,165,.08) 1px,transparent 1px),
+    linear-gradient(to bottom,rgba(128,140,165,.08) 1px,transparent 1px);
+  background-size:24px 24px;
+}
+
+/* Khung thẻ & bảng kiểu khối Minecraft vát cạnh 3D (gọn, sắc nét, không viền trắng chói) */
 :root[data-ui-theme="pixel"] .topbar,
 :root[data-ui-theme="pixel"] .player-bar,
 :root[data-ui-theme="pixel"] .card,
 :root[data-ui-theme="pixel"] .hero,
 :root[data-ui-theme="pixel"] .kpi-card,
-:root[data-ui-theme="pixel"] .opt,
+:root[data-ui-theme="pixel"] .quest-card,
+:root[data-ui-theme="pixel"] .confirm-dialog,
+:root[data-ui-theme="pixel"] .support-dialog,
+:root[data-ui-theme="pixel"] #rank-bar{
+  border-radius:2px !important;
+  border-top:2px solid var(--px-bevel-light) !important;
+  border-left:2px solid var(--px-bevel-light) !important;
+  border-right:2px solid var(--px-bevel-dark) !important;
+  border-bottom:3px solid var(--px-bevel-dark) !important;
+  box-shadow:0 4px 0 var(--px-drop) !important;
+}
+
+/* Nút bấm & thẻ lựa chọn kiểu nút GUI Minecraft */
 :root[data-ui-theme="pixel"] .btn,
 :root[data-ui-theme="pixel"] .chip,
-:root[data-ui-theme="pixel"] .quest-card,
-:root[data-ui-theme="pixel"] .shop-preview,
-:root[data-ui-theme="pixel"] .search{
+:root[data-ui-theme="pixel"] .opt,
+:root[data-ui-theme="pixel"] .search,
+:root[data-ui-theme="pixel"] .shop-preview{
   border-radius:2px !important;
-  border:2.5px solid var(--ink) !important;
-  box-shadow:4px 4px 0 var(--ink) !important;
+  border-top:2px solid var(--px-btn-light) !important;
+  border-left:2px solid var(--px-btn-light) !important;
+  border-right:2px solid var(--px-btn-dark) !important;
+  border-bottom:3px solid var(--px-btn-dark) !important;
+  box-shadow:none !important;
+}
+:root[data-ui-theme="pixel"] .btn:not(.primary):not(.ghost){
+  background:var(--px-btn-bg);
+}
+:root[data-ui-theme="pixel"] .btn.primary,
+:root[data-ui-theme="pixel"] .btn.active,
+:root[data-ui-theme="pixel"] .chip.active{
+  background:var(--px-green) !important;
+  border-top-color:var(--px-green-light) !important;
+  border-left-color:var(--px-green-light) !important;
+  border-right-color:var(--px-green-dark) !important;
+  border-bottom-color:var(--px-green-dark) !important;
+  color:#ffffff !important;
+  text-shadow:1px 1px 0 #16330d;
 }
 :root[data-ui-theme="pixel"] .btn:active:not(:disabled),
 :root[data-ui-theme="pixel"] .opt:active:not(:disabled){
-  transform:translate(2px,2px) !important;
-  box-shadow:2px 2px 0 var(--ink) !important;
+  transform:translateY(2px) !important;
+  border-bottom-width:1px !important;
 }
-:root[data-ui-theme="pixel"] .brand,
-:root[data-ui-theme="pixel"] h1,
-:root[data-ui-theme="pixel"] h2,
-:root[data-ui-theme="pixel"] h3,
-:root[data-ui-theme="pixel"] .lvl-badge,
-:root[data-ui-theme="pixel"] .xu-pill{
-  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-  letter-spacing:.02em;
+:root[data-ui-theme="pixel"] .xu-pill,
+:root[data-ui-theme="pixel"] .lvl-badge{
+  border-radius:2px !important;
+  text-shadow:1px 1px 0 rgba(0,0,0,.35);
 }
 
 /* --- 3. Kitty Kawaii Pastel --- */
@@ -735,11 +841,15 @@ html.support-open,html.support-open body{overflow:hidden}
 }
 .shop-preview.thm-pixel{
   border-radius:2px;
-  border:2.5px solid #1e2436;
-  box-shadow:4px 4px 0 #1e2436;
-  background:#fde047;
-  color:#1e2436;
-  font-family:monospace;
+  border-top:2px solid #82b84a;
+  border-left:2px solid #82b84a;
+  border-right:2px solid #2e1f14;
+  border-bottom:3px solid #2e1f14;
+  box-shadow:0 3px 0 #1a120b;
+  background:linear-gradient(180deg,#5b8731 0%,#5b8731 34%,#6b4c35 34%,#4e3624 100%);
+  color:#ffffff;
+  font-family:'Pixelify Sans',monospace;
+  text-shadow:2px 2px 0 #1b1b1b;
 }
 .shop-preview.thm-kitty{
   border-radius:24px;
