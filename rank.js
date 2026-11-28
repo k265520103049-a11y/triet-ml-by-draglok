@@ -1122,8 +1122,7 @@
 
     let html = '<div class="admin-toolbar">' +
       '<input class="admin-search" type="text" value="' + escapeHtml(query || '') + '" oninput="filterAdminLeaderboard(this.value)" placeholder="Tìm theo tên hoặc UID người chơi...">' +
-     // SỬA THÀNH:
-'<button type="button" class="admin-btn" onclick="switchAdminTab(\'lb\')">🔄 Tải lại (' + adminLbCache.length + ')</button>' +
+      '<button type="button" class="admin-btn" onclick="switchAdminTab(\'lb\')">🔄 Tải lại (' + adminLbCache.length + ')</button>' +
       '</div>';
 
     if (!list.length) {
@@ -1163,7 +1162,7 @@
     if (!body) return;
     let html = '<div class="admin-toolbar">' +
       '<div style="flex:1; font-size:13px; color:#cbd5e1; align-self:center;">Tổng số tài khoản đang bị khóa BXH: <strong>' + adminBanCache.length + '</strong></div>' +
-      '<button type="button" class="admin-btn" onclick="switchAdminTab('banned')">🔄 Tải lại</button>' +
+      '<button type="button" class="admin-btn" onclick="switchAdminTab(\'banned\')">🔄 Tải lại</button>' +
       '</div>';
 
     if (!adminBanCache.length) {
@@ -1197,7 +1196,7 @@
     if (!body) return;
     let html = '<div class="admin-toolbar">' +
       '<div style="flex:1; font-size:13px; color:#cbd5e1; align-self:center;">Báo lỗi câu hỏi chưa xử lý: <strong>' + adminReportsCache.length + '</strong></div>' +
-      '<button type="button" class="admin-btn" onclick="switchAdminTab('reports')">🔄 Tải lại</button>' +
+      '<button type="button" class="admin-btn" onclick="switchAdminTab(\'reports\')">🔄 Tải lại</button>' +
       '</div>';
 
     if (!adminReportsCache.length) {
