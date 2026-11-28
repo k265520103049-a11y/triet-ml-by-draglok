@@ -1122,7 +1122,8 @@
 
     let html = '<div class="admin-toolbar">' +
       '<input class="admin-search" type="text" value="' + escapeHtml(query || '') + '" oninput="filterAdminLeaderboard(this.value)" placeholder="Tìm theo tên hoặc UID người chơi...">' +
-      '<button type="button" class="admin-btn" onclick="switchAdminTab('lb')">🔄 Tải lại (' + adminLbCache.length + ')</button>' +
+     // SỬA THÀNH:
+'<button type="button" class="admin-btn" onclick="switchAdminTab(\'lb\')">🔄 Tải lại (' + adminLbCache.length + ')</button>' +
       '</div>';
 
     if (!list.length) {
