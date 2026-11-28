@@ -41,6 +41,9 @@
         <button id="btn-google-login" onclick="loginWithGoogle()" style="padding:6px 12px; border:none; border-radius:6px; background:#4285F4; color:#fff; font-weight:bold; cursor:pointer;">
           Đăng nhập / Leo Rank
         </button>
+        <button id="btn-open-changelog" onclick="openChangelogModal()" style="position:relative; padding:6px 11px; border:1px solid rgba(255,255,255,0.2); border-radius:6px; background:rgba(30,41,59,0.95); color:#f8fafc; font-weight:bold; cursor:pointer;">
+          🆕 Cập nhật<span id="changelog-dot" style="display:none; position:absolute; top:-4px; right:-4px; width:10px; height:10px; border-radius:50%; background:#ef4444; box-shadow:0 0 0 2px #0f172a;"></span>
+        </button>
         <button id="btn-open-leaderboard" onclick="openLeaderboard()" style="padding:6px 12px; border:none; border-radius:6px; background:#f59e0b; color:#000; font-weight:bold; cursor:pointer;">
           🏆 BXH
         </button>
@@ -61,6 +64,7 @@
   <footer class="footer">
     <div>Ngân hàng câu hỏi: học phần Triết học Mác - Lênin (BAS 123), 600 câu. Đáp án do người làm web tự lập, hãy đối chiếu với giáo trình khi cần xác minh.</div>
     <div class="footer-links">
+      <button class="btn ghost small" id="footerChangelogBtn" type="button" onclick="openChangelogModal()">🆕 Có gì mới? (v5.0)</button>
       <button class="btn ghost small" id="footerGuideBtn" type="button">📖 Hướng dẫn &amp; Quản lý câu hỏi</button>
       <button class="btn ghost small" id="footerSupportBtn" type="button">☕ Ủng hộ tác giả</button>
     </div>
@@ -81,6 +85,97 @@
       <div class="confirm-actions">
         <button class="btn" id="confirmCancel" type="button">Huỷ bỏ</button>
         <button class="btn primary" id="confirmOk" type="button">Xác nhận</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Hộp thoại Thông báo cập nhật (Có gì mới?) -->
+  <div class="support-overlay" id="changelogOverlay" hidden>
+    <section class="support-dialog changelog-dialog" role="dialog" aria-modal="true" aria-labelledby="changelogTitle">
+      <button class="support-close" id="changelogCloseX" type="button" aria-label="Đóng thông báo">×</button>
+      <div class="support-kicker">NHẬT KÝ CẬP NHẬT · PHIÊN BẢN v5.0</div>
+      <h2 id="changelogTitle" style="margin-bottom:6px;">🆕 Có gì mới trên web ôn Triết?</h2>
+      <p class="muted small" style="margin-top:0;">Bản cập nhật lớn bổ sung chế độ thi chuẩn phòng thi, đấu trường sinh tử và công cụ phản hồi câu hỏi.</p>
+      <div class="changelog-list">
+        <div class="changelog-item highlight">
+          <div class="changelog-badge">MỚI · v5.0</div>
+          <h4>🎓 Chế độ Thi thật (Thang điểm 10) &amp; Xuất ảnh thẻ thành tích</h4>
+          <p>Đề 40 câu phân bổ chuẩn 3 chương, khóa gợi ý tới khi nộp bài, quy đổi điểm hệ 10 kèm xếp loại học lực và xuất ảnh thẻ PNG 1080×1350 để khoe điểm.</p>
+        </div>
+        <div class="changelog-item highlight">
+          <div class="changelog-badge">MỚI · v5.0</div>
+          <h4>💀 Chế độ Sinh tử (Sudden Death — Sai 1 câu dừng cuộc chơi)</h4>
+          <p>Đếm ngược 15 giây mỗi câu! Trả lời đúng đi tiếp và nhân thưởng Xu Triết theo chuỗi; sai 1 câu hoặc hết giờ sẽ kết thúc lượt ngay lập tức.</p>
+        </div>
+        <div class="changelog-item highlight">
+          <div class="changelog-badge">MỚI · v5.0</div>
+          <h4>🚩 Nút Báo lỗi câu hỏi / đáp án ngay dưới từng câu</h4>
+          <p>Phát hiện câu sai đáp án, lỗi chính tả hoặc nhầm giải thích? Bấm <b>🚩 Báo lỗi</b> ngay dưới câu hỏi để gửi phản hồi trực tiếp cho quản trị viên.</p>
+        </div>
+        <div class="changelog-item">
+          <div class="changelog-badge">TÍNH NĂNG</div>
+          <h4>🔔 Thông báo phiên bản tự động</h4>
+          <p>Tự động hiển thị tóm tắt thay đổi 1 lần khi có bản cập nhật mới; có thể xem lại bất cứ lúc nào qua nút <b>🆕 Cập nhật</b>.</p>
+        </div>
+        <div class="changelog-item">
+          <div class="changelog-badge">BẢN TRƯỚC · v4.0</div>
+          <h4>🔥 Hạng Thách Đấu (Top 3 ≥ 15.000 RP) &amp; Bảo mật chống gian lận</h4>
+          <p>Thêm bậc rank Thách Đấu, khóa chỉnh sửa điểm cục bộ bằng chữ ký xác thực và bộ lọc chống auto-click.</p>
+        </div>
+      </div>
+      <div class="support-actions" style="margin-top:14px;">
+        <button class="btn primary" id="changelogOkBtn" type="button">✔ Đã hiểu, vào ôn ngay!</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Hộp thoại Báo lỗi câu hỏi / đáp án -->
+  <div class="support-overlay" id="reportOverlay" hidden>
+    <section class="support-dialog report-dialog" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+      <button class="support-close" id="reportCloseX" type="button" aria-label="Đóng">×</button>
+      <div class="support-kicker">PHẢN HỒI NGÂN HÀNG CÂU HỎI</div>
+      <h2 id="reportTitle" style="margin-bottom:6px;">🚩 Báo lỗi câu hỏi / đáp án</h2>
+      <div id="reportQuestionPreview" class="report-q-preview"></div>
+      <div class="report-reasons" id="reportReasons">
+        <label class="report-reason-opt"><input type="radio" name="reportReason" value="Sai đáp án đúng" checked> <span>❌ Sai đáp án đúng</span></label>
+        <label class="report-reason-opt"><input type="radio" name="reportReason" value="Lỗi chính tả / thiếu nội dung"> <span>✏️ Lỗi chính tả / thiếu nội dung</span></label>
+        <label class="report-reason-opt"><input type="radio" name="reportReason" value="Giải thích chưa chuẩn"> <span>📖 Giải thích chưa chuẩn</span></label>
+        <label class="report-reason-opt"><input type="radio" name="reportReason" value="Câu hỏi bị trùng lặp"> <span>🔄 Câu hỏi bị trùng lặp</span></label>
+      </div>
+      <textarea id="reportNoteInput" class="report-note" rows="3" maxlength="300" placeholder="Ghi chú thêm (không bắt buộc, vd: Theo giáo trình tr.45 đáp án đúng phải là B...)"></textarea>
+      <div class="support-actions" style="margin-top:12px;">
+        <button class="btn primary" id="reportSubmitBtn" type="button">🚩 Gửi báo lỗi</button>
+        <button class="btn ghost" id="reportCancelBtn" type="button">Huỷ bỏ</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Hộp thoại Xuất ảnh thẻ thành tích -->
+  <div class="support-overlay" id="certOverlay" hidden>
+    <section class="support-dialog cert-dialog" role="dialog" aria-modal="true" aria-labelledby="certTitle">
+      <button class="support-close" id="certCloseX" type="button" aria-label="Đóng">×</button>
+      <div class="support-kicker">THẺ CHỨNG NHẬN THÀNH TÍCH</div>
+      <h2 id="certTitle" style="margin-bottom:8px;">📸 Ảnh thẻ kết quả thi</h2>
+      <div class="cert-controls">
+        <div style="flex:1; min-width:170px;">
+          <label class="small muted" for="certNameInput" style="display:block; margin-bottom:4px;">Tên hiển thị trên thẻ:</label>
+          <input id="certNameInput" class="search" type="text" maxlength="36" placeholder="Nhập tên của bạn..." style="width:100%;">
+        </div>
+        <div style="min-width:155px;">
+          <label class="small muted" for="certThemeSelect" style="display:block; margin-bottom:4px;">Màu nền thẻ:</label>
+          <select id="certThemeSelect" class="search" style="width:100%;">
+            <option value="crimson">Đỏ Vàng Triết Học</option>
+            <option value="navy">Xanh Đêm Học Thuật</option>
+            <option value="violet">Tím Huyền Bí</option>
+          </select>
+        </div>
+      </div>
+      <div class="cert-canvas-wrap">
+        <canvas id="certCanvas" width="1080" height="1350"></canvas>
+      </div>
+      <div class="support-actions" style="margin-top:12px;">
+        <button class="btn primary" id="certDownloadBtn" type="button">⬇️ Tải ảnh PNG về máy</button>
+        <button class="btn" id="certCopyBtn" type="button">📋 Sao chép ảnh</button>
       </div>
     </section>
   </div>
@@ -177,6 +272,7 @@
         if (lastFocus && typeof lastFocus.focus === 'function') {
           try { lastFocus.focus({ preventScroll: true }); } catch (e) { lastFocus.focus(); }
         }
+        try { window.dispatchEvent(new CustomEvent('support:closed')); } catch (e) {}
       }
 
       function hideSupportFor2Hours() {
@@ -226,8 +322,69 @@
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
       });
 
-      if (shouldAutoOpen()) {
+      var autoWillOpen = shouldAutoOpen();
+      window.isSupportAutoOpening = autoWillOpen;
+      if (autoWillOpen) {
         window.setTimeout(openSupport, 600);
+      }
+    })();
+
+    (function () {
+      var APP_VERSION = 'v5.0';
+      var SEEN_KEY = 'mln-changelog-seen-v';
+      var overlay = document.getElementById('changelogOverlay');
+      var closeX = document.getElementById('changelogCloseX');
+      var okBtn = document.getElementById('changelogOkBtn');
+      var dot = document.getElementById('changelog-dot');
+
+      function hasSeenLatest() {
+        try { return localStorage.getItem(SEEN_KEY) === APP_VERSION; } catch (e) { return false; }
+      }
+      function markSeenLatest() {
+        try { localStorage.setItem(SEEN_KEY, APP_VERSION); } catch (e) {}
+        if (dot) dot.style.display = 'none';
+      }
+      function openChangelog() {
+        if (!overlay) return;
+        overlay.hidden = false;
+        markSeenLatest();
+        if (okBtn) { try { okBtn.focus({ preventScroll: true }); } catch (e) { okBtn.focus(); } }
+      }
+      function closeChangelog() {
+        if (!overlay || overlay.hidden) return;
+        overlay.hidden = true;
+        markSeenLatest();
+      }
+
+      window.openChangelogModal = openChangelog;
+      window.closeChangelogModal = closeChangelog;
+
+      if (dot && !hasSeenLatest()) {
+        dot.style.display = 'inline-block';
+      }
+      if (closeX) closeX.addEventListener('click', closeChangelog);
+      if (okBtn) okBtn.addEventListener('click', closeChangelog);
+      if (overlay) {
+        overlay.addEventListener('click', function (e) {
+          if (e.target === overlay) closeChangelog();
+        });
+      }
+      document.addEventListener('keydown', function (e) {
+        if (overlay && !overlay.hidden && (e.key === 'Escape' || e.key === 'Esc')) {
+          e.preventDefault();
+          closeChangelog();
+        }
+      });
+
+      if (!hasSeenLatest()) {
+        if (window.isSupportAutoOpening) {
+          window.addEventListener('support:closed', function onSupportClosed() {
+            window.removeEventListener('support:closed', onSupportClosed);
+            window.setTimeout(openChangelog, 320);
+          });
+        } else {
+          window.setTimeout(openChangelog, 750);
+        }
       }
     })();
   </script>

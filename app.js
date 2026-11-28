@@ -731,9 +731,12 @@
   })();
 
   function isOverlayOpen() {
-    var c = document.getElementById('confirmOverlay');
-    var s = document.getElementById('supportOverlay');
-    return (c && !c.hidden) || (s && !s.hidden);
+    var ids = ['confirmOverlay', 'supportOverlay', 'changelogOverlay', 'reportOverlay', 'certOverlay'];
+    for (var i = 0; i < ids.length; i++) {
+      var el = document.getElementById(ids[i]);
+      if (el && !el.hidden) return true;
+    }
+    return false;
   }
 
   function fmtTime(ms) {
@@ -1014,12 +1017,24 @@
     if (isHidden) btn.style.visibility = 'hidden';
     return btn;
   }
-  function qHeader(it, label) {
+  function reportBtn(q) {
+    return h('button', {
+      class: 'btn-report-q',
+      type: 'button',
+      title: 'Báo lỗi câu hỏi hoặc đáp án này',
+      onclick: function (e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        openReportModal(q);
+      }
+    }, '🚩 Báo lỗi');
+  }
+  function qHeader(it, label, hideReport) {
     return h('div', { class: 'qmeta' },
       h('span', { class: 'chip' }, 'Chương ' + it.q.ch + ' · Câu ' + it.q.n),
       h('span', { class: 'chip' }, 'Mức ' + it.q.lv),
       label ? h('span', { class: 'chip' }, label) : null,
       h('span', { class: 'spacer' }),
+      !hideReport ? reportBtn(it.q) : null,
       markBtn(it.q));
   }
 
@@ -1288,20 +1303,39 @@
     var mix = h('section', { class: 'card mix' },
       h('div', { class: 'eyebrow' }, 'Ôn tổng hợp'),
       h('h3', null, MIX_SIZE + ' câu ngẫu nhiên từ cả 3 chương'),
-      h('div', { class: 'meta' }, 'Làm như đi thi: chọn đáp án, nộp bài rồi xem điểm, nhận thưởng Xu Triết & EXP.' +
-        (mixStat.runs ? ' · Đã làm ' + mixStat.runs + ' lần, điểm cao nhất ' + mixStat.best + '/' + MIX_SIZE : '')),
+      h('div', { class: 'meta' }, 'Làm tự do, có thể dùng vật phẩm trợ giúp, nộp bài để xem điểm & nhận thưởng Xu Triết.' +
+        (mixStat.runs ? ' · Đã làm ' + mixStat.runs + ' lần, cao nhất ' + mixStat.best + '/' + MIX_SIZE : '')),
       h('div', { class: 'actions' },
         limSel,
         h('button', { class: 'btn primary big', onclick: function () { startMix(parseInt(limSel.value, 10)); } }, 'Bắt đầu đề ' + MIX_SIZE + ' câu')));
 
-    var fun = h('section', { class: 'card wide' },
-      h('div', { class: 'eyebrow' }, 'ĐẤU TRƯỜNG GAMESHOW TRUYỀN HÌNH · THƯỞNG XU TRIẾT'),
-      h('h3', null, 'Thách thức tri thức - Chinh phục đỉnh cao'),
-      h('div', { class: 'meta' }, 'Bốn gameshow: Ai là triệu phú, Đường lên đỉnh Olympia, Chiếc nón kỳ diệu và Jeopardy. Hoàn thành mỗi ván để nhận Xu Triết & EXP đổi giao diện!'),
+    var examStat = stat('realexam');
+    var examSel = h('select', { class: 'search', 'aria-label': 'Thời gian thi thật' },
+      h('option', { value: '40' }, '40 phút (Chuẩn phòng thi)'),
+      h('option', { value: '25' }, '25 phút (Tăng tốc)'),
+      h('option', { value: '15' }, '15 phút (Chớp nhoáng)'));
+    var best10Label = examStat.runs
+      ? (' · Đã thi ' + examStat.runs + ' lần, cao nhất ' + (examStat.bestScore10 != null ? examStat.bestScore10 : ((examStat.best / MIX_SIZE * 10).toFixed(2).replace(/\.?0+$/, ''))) + '/10')
+      : '';
+    var realExamCard = h('section', { class: 'card realexam' },
+      h('div', { class: 'eyebrow' }, '🎓 MÔ PHỎNG PHÒNG THI · THANG ĐIỂM 10'),
+      h('h3', null, 'Thi thật 40 câu & Xuất ảnh thẻ điểm'),
+      h('div', { class: 'meta' }, 'Cấu trúc chuẩn 3 chương, khóa gợi ý tới khi nộp bài, chấm điểm hệ 10 kèm xếp loại và tải ảnh thẻ thành tích.' + best10Label),
       h('div', { class: 'actions' },
+        examSel,
+        h('button', { class: 'btn primary big', onclick: function () { startRealExam(parseInt(examSel.value, 10) || 40); } }, '🎓 Bắt đầu thi thật')));
+
+    var sdStat = stat('suddendeath');
+    var fun = h('section', { class: 'card wide' },
+      h('div', { class: 'eyebrow' }, 'ĐẤU TRƯỜNG GAMESHOW & SINH TỬ · THƯỞNG XU TRIẾT'),
+      h('h3', null, 'Thách thức tri thức - Chinh phục đỉnh cao'),
+      h('div', { class: 'meta' }, '5 chế độ đấu trường: Chế độ Sinh tử (15s/câu, sai 1 câu dừng ngay), Ai là triệu phú, Đỉnh Olympia, Chiếc nón kỳ diệu và Jeopardy!' +
+        (sdStat.best ? ' · Kỷ lục Sinh tử: ' + sdStat.best + ' câu' : '')),
+      h('div', { class: 'actions' },
+        h('button', { class: 'btn primary', onclick: function () { startSuddenDeath(); } }, '💀 Chế độ Sinh tử'),
         h('button', { class: 'btn primary', onclick: function () { startMillionaire(); } }, '🏆 Ai là triệu phú'),
-        h('button', { class: 'btn primary', onclick: function () { gameMenu(); } }, '📺 Chọn gameshow'),
         h('button', { class: 'btn primary', onclick: function () { startOlympia(); } }, '🏔️ Đỉnh Olympia'),
+        h('button', { class: 'btn', onclick: function () { gameMenu(); } }, '📺 Tất cả gameshow (5)'),
         h('button', { class: 'btn gold', onclick: function () { shopPage('bg'); } }, '🏪 Cửa hàng Background')));
 
     var pend = pendingList();
@@ -1312,13 +1346,13 @@
           h('span', { class: 'streak-pill', title: 'Chuỗi ngày học liên tiếp' },
             streak ? ('🔥 Chuỗi ' + streak + ' ngày liên tiếp') : '✨ Bắt đầu chuỗi học hôm nay')),
         h('h1', null, 'Ôn tập Triết học Mác - Lênin'),
-        h('p', null, 'Ngân hàng ' + Q.length + ' câu trắc nghiệm, chia theo chương. Luyện tập theo chương, đề thi tổng hợp, nhiệm vụ ngày và Gameshow truyền hình nhận Xu Triết.'),
+        h('p', null, 'Ngân hàng ' + Q.length + ' câu trắc nghiệm, chia theo chương. Luyện tập theo chương, thi thật thang điểm 10, chế độ Sinh tử 15s và Gameshow truyền hình.'),
         h('div', { class: 'progress', title: 'Tiến độ chung' },
           h('span', { style: 'width:' + (Q.length ? Math.round(seenAll / Q.length * 100) : 0) + '%' })),
         h('div', { class: 'small muted' }, 'Đã làm đúng ' + seenAll + '/' + Q.length + ' câu (' + (Q.length ? Math.round(seenAll / Q.length * 100) : 0) + '%) · lưu cục bộ trên trình duyệt')),
       pend.length ? h('section', { class: 'stack' }, h('h2', null, 'Đang ôn dở'), pend.map(function (p) { return pendingCard(p, home); })) : null,
       buildDailyQuestsCard(),
-      h('div', { class: 'grid' }, cards, mix, fun)));
+      h('div', { class: 'grid' }, cards, mix, realExamCard, fun)));
   }
 
   /* ---------- Menu chọn phạm vi ôn chương ---------- */
@@ -1681,6 +1715,7 @@
         S.mixBonus ? h('p', { class: 'ok-t' }, '🎁 Thưởng nộp bài: +' + S.mixBonus.xu + ' Xu Triết & +' + S.mixBonus.exp + ' EXP') : null,
         h('div', { class: 'navgrid', style: 'justify-content:center' }, dots),
         h('div', { class: 'row', style: 'justify-content:center;margin-top:16px' },
+          h('button', { class: 'btn gold', onclick: function () { openAchievementCardModal({ modeLabel: 'ĐỀ ÔN TỔNG HỢP 40 CÂU', right: S.right, total: total, score10: score10, elapsedMs: S.elapsed }); } }, '📸 Xuất ảnh thẻ điểm'),
           h('button', { class: 'btn primary', onclick: function () { startMix(); } }, 'Làm đề mới'),
           h('button', { class: 'btn', onclick: startWrongBank }, 'Ôn các câu sai'),
           h('button', { class: 'btn', onclick: home }, 'Trang chủ'))),
@@ -1710,7 +1745,7 @@
     return h('div', { class: 'card review-item' },
       h('div', { class: 'qmeta' },
         h('span', { class: 'chip' }, 'Chương ' + q.ch + ' · Câu ' + q.n), status,
-        h('span', { class: 'spacer' }), extra, markBtn(q)),
+        h('span', { class: 'spacer' }), extra, reportBtn(q), markBtn(q)),
       h('div', { class: 'qtext' }, highlightKw ? highlightNode(q.q, highlightKw) : q.q),
       h('div', { class: 'opts' }, opts),
       explainBox(q));
@@ -2568,12 +2603,14 @@
   function gameMenu() {
     stopTimer(); S = null;
     setNav('navGame');
-    var mil = stat('millionaire'), oly = stat('olympia'), wheel = stat('wheel'), jeopardy = stat('jeopardy');
+    var sd = stat('suddendeath'), mil = stat('millionaire'), oly = stat('olympia'), wheel = stat('wheel'), jeopardy = stat('jeopardy');
     mount(h('div', { class: 'stack' },
       h('button', { class: 'btn ghost', style: 'align-self:flex-start', onclick: home }, '← Trang chủ'),
-      h('h1', null, '📺 Đấu Trường Gameshow Triết Học'),
-      h('p', { class: 'muted' }, 'Hoàn thành bất kỳ gameshow nào để nhận thưởng Xu Triết & EXP dùng mở khóa Background và vật phẩm trong Cửa hàng!'),
+      h('h1', null, '📺 Đấu Trường Gameshow & Sinh Tử'),
+      h('p', { class: 'muted' }, 'Chinh phục 5 đấu trường để nhận thưởng Xu Triết & EXP dùng mở khóa Background và vật phẩm trong Cửa hàng!'),
       h('div', { class: 'grid game-grid' },
+        gameCard('💀 Chế Độ Sinh Tử (Sudden Death)', '15 giây mỗi câu! Trả lời đúng đi tiếp và nhân thưởng Xu theo chuỗi; sai 1 câu hoặc hết giờ dừng ngay.',
+          sd.best ? 'Kỷ lục chuỗi: ' + sd.best + ' câu · ' + sd.runs + ' lượt' : 'Chưa chơi', startSuddenDeath),
         gameCard('🏆 Ai Là Triệu Phú', '15 câu hỏi tăng dần độ khó, thang tiền thưởng, 3 quyền trợ giúp. Thưởng tới +300 Xu Triết.',
           mil.best ? 'Kỷ lục: ' + mil.best.toLocaleString() + ' VNĐ · ' + mil.runs + ' lượt' : 'Chưa chơi', startMillionaire),
         gameCard('🏔️ Đường Lên Đỉnh Olympia', 'Đủ 4 phần: Khởi động, Vượt chướng ngại vật, Tăng tốc và Về đích. Thưởng Xu theo điểm số.',
@@ -3343,11 +3380,889 @@
       }
     }
 
-    if (S.view === 'mix' && !S.submitted) {
-      if (key === 'ArrowLeft' && S.i > 0) { e.preventDefault(); S.i--; renderMix(); }
-      else if (key === 'ArrowRight' && S.i + 1 < S.items.length) { e.preventDefault(); S.i++; renderMix(); }
+    if ((S.view === 'mix' || S.view === 'realexam') && !S.submitted) {
+      if (key === 'ArrowLeft' && S.i > 0) {
+        e.preventDefault(); S.i--;
+        if (S.view === 'realexam') renderRealExam(); else renderMix();
+      } else if (key === 'ArrowRight' && S.i + 1 < S.items.length) {
+        e.preventDefault(); S.i++;
+        if (S.view === 'realexam') renderRealExam(); else renderMix();
+      }
     }
   });
+
+  // Mở rộng phím tắt 1-4 / A-D cho Thi thật và Chế độ Sinh tử
+  document.addEventListener('keydown', function (e) {
+    if (isOverlayOpen() || !S) return;
+    var tag = document.activeElement ? document.activeElement.tagName : '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var key = e.key;
+    var lower = key.toLowerCase();
+    var optIdx = -1;
+    if (key >= '1' && key <= '4') optIdx = parseInt(key, 10) - 1;
+    else if (lower >= 'a' && lower <= 'd') optIdx = lower.charCodeAt(0) - 97;
+
+    if (optIdx >= 0 && optIdx <= 3) {
+      if (S.view === 'realexam' && !S.submitted && S.items[S.i]) {
+        e.preventDefault(); pickRealExam(optIdx); return;
+      }
+      if (S.view === 'suddendeath' && !S.locked && !S.over && S.current) {
+        e.preventDefault(); pickSuddenDeath(optIdx); return;
+      }
+    }
+    if (lower === 'f' && S.view === 'realexam' && !S.submitted) {
+      e.preventDefault(); toggleFlagRealExam(); return;
+    }
+  });
+
+  /* ==========================================================================
+   * 🚩 TÍNH NĂNG 1: BÁO LỖI CÂU HỎI / ĐÁP ÁN
+   * ========================================================================== */
+  var activeReportQuestion = null;
+  var LAST_REPORT_KEY = 'mln-last-report-at';
+  var DAILY_REPORT_KEY = 'mln-daily-report-count';
+
+  function openReportModal(q) {
+    if (!q) return;
+    activeReportQuestion = q;
+    var overlay = document.getElementById('reportOverlay');
+    var preview = document.getElementById('reportQuestionPreview');
+    var noteEl = document.getElementById('reportNoteInput');
+    if (!overlay) return;
+
+    var ansText = (q.o && typeof q.a === 'number' && q.o[q.a]) ? (LETTERS[q.a] + '. ' + q.o[q.a]) : '';
+    if (preview) {
+      preview.replaceChildren(
+        h('div', { style: 'font-weight:700;margin-bottom:4px;color:var(--accent)' }, 'Chương ' + q.ch + ' · Câu ' + q.n + ' (' + q.id + ')'),
+        h('div', null, q.q),
+        ansText ? h('div', { class: 'muted small', style: 'margin-top:4px' }, 'Đáp án hệ thống hiện tại: ' + ansText) : null
+      );
+    }
+    if (noteEl) noteEl.value = '';
+    var radios = document.querySelectorAll('input[name="reportReason"]');
+    if (radios && radios.length) radios[0].checked = true;
+    overlay.hidden = false;
+  }
+
+  function closeReportModal() {
+    var overlay = document.getElementById('reportOverlay');
+    if (overlay) overlay.hidden = true;
+    activeReportQuestion = null;
+  }
+
+  window.openReportModal = openReportModal;
+
+  (function bindReportModalEvents() {
+    var overlay = document.getElementById('reportOverlay');
+    var closeX = document.getElementById('reportCloseX');
+    var cancelBtn = document.getElementById('reportCancelBtn');
+    var submitBtn = document.getElementById('reportSubmitBtn');
+    if (closeX) closeX.addEventListener('click', closeReportModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeReportModal);
+    if (overlay) {
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closeReportModal();
+      });
+    }
+    document.addEventListener('keydown', function (e) {
+      if (overlay && !overlay.hidden && (e.key === 'Escape' || e.key === 'Esc')) {
+        e.preventDefault();
+        closeReportModal();
+      }
+    });
+    if (submitBtn) {
+      submitBtn.addEventListener('click', async function () {
+        if (!activeReportQuestion) return;
+        var now = Date.now();
+        var lastAt = Number(localStorage.getItem(LAST_REPORT_KEY) || 0);
+        if (now - lastAt < 45000) {
+          var waitSec = Math.ceil((45000 - (now - lastAt)) / 1000);
+          toast('Vui lòng đợi ' + waitSec + ' giây nữa trước khi gửi báo lỗi tiếp theo.', 'info');
+          return;
+        }
+        var today = dateKey(0);
+        var dailyRaw = {};
+        try { dailyRaw = JSON.parse(localStorage.getItem(DAILY_REPORT_KEY) || '{}'); } catch (e) {}
+        var countToday = (dailyRaw.date === today) ? (Number(dailyRaw.count) || 0) : 0;
+        if (countToday >= 15) {
+          toast('Bạn đã đạt giới hạn 15 lượt báo lỗi trong hôm nay.', 'bad');
+          return;
+        }
+
+        var checked = document.querySelector('input[name="reportReason"]:checked');
+        var reason = checked ? checked.value : 'Sai đáp án đúng';
+        var noteEl = document.getElementById('reportNoteInput');
+        var note = noteEl ? noteEl.value.trim() : '';
+        var q = activeReportQuestion;
+        var ansText = (q.o && typeof q.a === 'number' && q.o[q.a]) ? (LETTERS[q.a] + '. ' + q.o[q.a]) : '';
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Đang gửi...';
+        try {
+          if (typeof window.submitQuestionReport === 'function') {
+            await window.submitQuestionReport({
+              qid: q.id,
+              ch: q.ch,
+              n: q.n,
+              questionText: q.q,
+              currentAnswer: ansText,
+              reason: reason,
+              note: note
+            });
+          }
+          localStorage.setItem(LAST_REPORT_KEY, String(now));
+          localStorage.setItem(DAILY_REPORT_KEY, JSON.stringify({ date: today, count: countToday + 1 }));
+          sfx.ok();
+          toast('✔ Cảm ơn bạn! Báo lỗi câu ' + q.id + ' đã được gửi tới quản trị viên.', 'ok');
+          closeReportModal();
+        } catch (err) {
+          console.error('Lỗi gửi báo cáo:', err);
+          toast('Không thể gửi lên máy chủ lúc này, đã lưu tạm trên máy.', 'info');
+          closeReportModal();
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '🚩 Gửi báo lỗi';
+        }
+      });
+    }
+  })();
+
+  /* ==========================================================================
+   * 🎓 TÍNH NĂNG 2: CHẾ ĐỘ THI THẬT (THANG ĐIỂM 10) & XUẤT ẢNH THẺ THÀNH TÍCH
+   * ========================================================================== */
+  function buildBalancedExamPool(totalSize) {
+    var c1 = shuffle(chapterQs(1));
+    var c2 = shuffle(chapterQs(2));
+    var c3 = shuffle(chapterQs(3));
+    if (!c1.length && !c2.length && !c3.length) {
+      return shuffle(Q).slice(0, totalSize);
+    }
+    var n1 = Math.min(c1.length, Math.round(totalSize * 0.175)); // ~7 câu chương 1
+    var n2 = Math.min(c2.length, Math.round(totalSize * 0.40));  // ~16 câu chương 2
+    var n3 = Math.min(c3.length, totalSize - n1 - n2);           // ~17 câu chương 3
+    var picked = c1.slice(0, n1).concat(c2.slice(0, n2), c3.slice(0, n3));
+    if (picked.length < totalSize) {
+      var usedIds = {};
+      picked.forEach(function (q) { usedIds[q.id] = true; });
+      var rest = shuffle(Q.filter(function (q) { return !usedIds[q.id]; }));
+      picked = picked.concat(rest.slice(0, totalSize - picked.length));
+    }
+    return shuffle(picked);
+  }
+
+  function classifyScore10(scoreNum) {
+    if (scoreNum >= 9.0) return { label: 'XUẤT SẮC (A+)', short: 'XUẤT SẮC', cls: 'grade-s', color: '#f59e0b' };
+    if (scoreNum >= 8.0) return { label: 'GIỎI (A / B+)', short: 'GIỎI', cls: 'grade-a', color: '#22c55e' };
+    if (scoreNum >= 7.0) return { label: 'KHÁ (B / C+)', short: 'KHÁ', cls: 'grade-b', color: '#3b82f6' };
+    if (scoreNum >= 5.0) return { label: 'TRUNG BÌNH (C / D)', short: 'TRUNG BÌNH', cls: 'grade-c', color: '#94a3b8' };
+    return { label: 'CHƯA ĐẠT (F · Cần ôn thêm)', short: 'CHƯA ĐẠT', cls: 'grade-f', color: '#ef4444' };
+  }
+
+  function startRealExam(limitMin) {
+    var mins = Number(limitMin) || 40;
+    setNav('navHome');
+    var size = Math.min(MIX_SIZE, Q.length);
+    var pool = buildBalancedExamPool(size);
+    S = {
+      view: 'realexam',
+      items: pool.map(makeItem),
+      flagged: {},
+      i: 0,
+      start: Date.now(),
+      submitted: false,
+      limit: mins * 60000,
+      limitMin: mins
+    };
+    renderRealExam();
+    runRealExamTimer();
+  }
+
+  function runRealExamTimer() {
+    stopTimer();
+    timer = setInterval(function () {
+      var el = document.getElementById('realExamTimer');
+      if (!S || S.view !== 'realexam' || S.submitted) return;
+      var rem = Math.max(0, S.limit - (Date.now() - S.start));
+      if (el) el.textContent = fmtTime(rem);
+      if (rem <= 0) {
+        toast('⏰ Đã hết thời gian làm bài! Hệ thống tự động thu bài.', 'bad');
+        submitRealExam(true);
+      }
+    }, 1000);
+  }
+
+  function pickRealExam(k) {
+    if (!S || S.view !== 'realexam' || S.submitted) return;
+    S.items[S.i].picked = k;
+    renderRealExam(false);
+  }
+
+  function toggleFlagRealExam() {
+    if (!S || S.view !== 'realexam' || S.submitted) return;
+    if (S.flagged[S.i]) delete S.flagged[S.i];
+    else S.flagged[S.i] = true;
+    renderRealExam(false);
+  }
+
+  function renderRealExam(scroll) {
+    var it = S.items[S.i];
+    var total = S.items.length;
+    var done = S.items.filter(function (x) { return x.picked !== null; }).length;
+    var rem = Math.max(0, S.limit - (Date.now() - S.start));
+    var isFlagged = !!S.flagged[S.i];
+
+    var opts = [0, 1, 2, 3].map(function (k) {
+      return optionButton(it, k, it.picked === k ? 'selected' : '', function () { pickRealExam(k); });
+    });
+
+    var dots = S.items.map(function (item, idx) {
+      var cls = 'nav-dot'
+        + (item.picked !== null ? ' answered' : '')
+        + (idx === S.i ? ' current' : '')
+        + (S.flagged[idx] ? ' flagged' : '');
+      return h('button', {
+        class: cls, type: 'button',
+        title: 'Câu ' + (idx + 1) + (S.flagged[idx] ? ' (Đã cắm cờ xem lại)' : ''),
+        onclick: function () { S.i = idx; renderRealExam(); }
+      }, idx + 1);
+    });
+
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'hud' },
+        h('div', null, h('b', null, '🎓 Phòng thi thật · ' + total + ' câu (' + S.limitMin + ' phút)')),
+        h('div', { class: 'stats' },
+          h('span', { class: rem < 300000 ? 'bad-t' : null }, '⏳ Còn ', h('b', { id: 'realExamTimer' }, fmtTime(rem))),
+          h('span', null, 'Đã chọn ', h('b', null, done + '/' + total)))),
+      h('div', { class: 'navgrid' }, dots),
+      h('div', { class: 'card qcard' },
+        h('div', { class: 'qmeta' },
+          h('span', { class: 'chip' }, 'Câu ' + (S.i + 1) + '/' + total),
+          h('span', { class: 'chip' }, 'Phòng thi chuẩn (Ẩn gợi ý)'),
+          h('span', { class: 'spacer' }),
+          h('button', {
+            class: 'btn small' + (isFlagged ? ' gold' : ' ghost'),
+            type: 'button',
+            onclick: toggleFlagRealExam
+          }, isFlagged ? '🚩 Đã cắm cờ' : '🏳️ Cắm cờ xem lại')),
+        h('div', { class: 'qtext' }, it.q.q),
+        h('div', { class: 'opts' }, opts)),
+      h('div', { class: 'row between', style: 'max-width:900px;margin-inline:auto;width:100%' },
+        h('button', { class: 'btn', disabled: S.i === 0 ? true : null, onclick: function () { S.i--; renderRealExam(); } }, '← Câu trước'),
+        S.i + 1 < total
+          ? h('button', { class: 'btn', onclick: function () { S.i++; renderRealExam(); } }, 'Câu sau →')
+          : h('button', { class: 'btn primary', onclick: function () { submitRealExam(false); } }, 'Nộp bài thi')),
+      h('div', { class: 'row', style: 'justify-content:center' },
+        h('button', { class: 'btn primary big', onclick: function () { submitRealExam(false); } }, '📩 Nộp bài & Chấm điểm hệ 10'),
+        h('button', {
+          class: 'btn ghost',
+          onclick: function () {
+            askConfirm({
+              icon: '⚠️',
+              title: 'Rời phòng thi?',
+              message: 'Bài thi thật không lưu nháp. Nếu thoát bây giờ lượt thi sẽ bị huỷ.',
+              okText: 'Thoát phòng thi',
+              danger: true
+            }, home);
+          }
+        }, 'Thoát phòng thi')),
+      kbdBar([['1-4 / A-D', 'Chọn đáp án'], ['← / →', 'Chuyển câu'], ['F', 'Cắm cờ xem lại']])), scroll);
+  }
+
+  function submitRealExam(auto) {
+    var left = S.items.filter(function (x) { return x.picked === null; }).length;
+    var finalize = function () {
+      S.submitted = true;
+      stopTimer();
+      var right = 0;
+      var okQids = [];
+      S.items.forEach(function (it) {
+        var ok = it.picked !== null && it.order[it.picked] === it.q.a;
+        if (ok) {
+          right++;
+          if (it.q && it.q.id) okQids.push(String(it.q.id));
+        }
+        record(it.q, ok, true, { mode: 'batch' });
+      });
+      S.right = right;
+      S.elapsed = Math.min(Date.now() - S.start, S.limit);
+      var total = S.items.length;
+      var score10Num = Math.round((right / total) * 1000) / 100;
+      S.score10Num = score10Num;
+      S.score10Str = score10Num.toFixed(2).replace(/\.?0+$/, '');
+
+      emitToRankBridge({
+        type: 'batch_answers',
+        okCount: right,
+        qids: okQids,
+        elapsedMs: S.elapsed,
+        trusted: true
+      });
+
+      var st = stat('realexam');
+      st.runs++;
+      st.completed++;
+      if (right > st.best) st.best = right;
+      if (st.bestScore10 == null || score10Num > st.bestScore10) {
+        st.bestScore10 = score10Num;
+      }
+
+      var bonus = awardProgress(right * 3 + 30, 80, null, true);
+      S.examBonus = bonus;
+      save();
+      sfx.win();
+      launchConfetti(score10Num >= 8 ? 50 : 28);
+      renderRealExamResult('all');
+    };
+
+    if (auto !== true && left > 0) {
+      askConfirm({
+        icon: '🎓',
+        title: 'Xác nhận nộp bài thi thật?',
+        message: 'Bạn còn ' + left + ' câu chưa tô đáp án (sẽ tính 0 điểm các câu này). Nộp bài ngay?',
+        okText: 'Nộp bài ngay'
+      }, finalize);
+      return;
+    }
+    finalize();
+  }
+
+  function renderRealExamResult(filter) {
+    var total = S.items.length;
+    var grade = classifyScore10(S.score10Num);
+    var list = S.items.filter(function (it) {
+      var ok = it.picked !== null && it.order[it.picked] === it.q.a;
+      return filter === 'all' || (filter === 'wrong' && !ok);
+    });
+    var dots = S.items.map(function (it, i) {
+      var ok = it.picked !== null && it.order[it.picked] === it.q.a;
+      return h('span', {
+        class: 'nav-dot ' + (ok ? 'r-ok' : 'r-bad'),
+        style: 'display:grid;place-items:center;cursor:default',
+        title: 'Câu ' + (i + 1)
+      }, i + 1);
+    });
+
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'card score' },
+        h('div', { class: 'eyebrow' }, 'KẾT QUẢ THI THẬT · HỌC PHẦN BAS 123'),
+        h('div', { class: 'big' }, S.score10Str + ' / 10'),
+        h('div', { class: 'grade-pill ' + grade.cls }, grade.label),
+        h('p', { style: 'margin:6px 0' },
+          'Số câu đúng: ', h('b', null, S.right + '/' + total),
+          ' · Thời gian làm bài: ', h('b', null, fmtTime(S.elapsed))),
+        S.examBonus ? h('p', { class: 'ok-t' }, '🎁 Thưởng hoàn thành phòng thi: +' + S.examBonus.xu + ' Xu Triết & +' + S.examBonus.exp + ' EXP') : null,
+        h('div', { class: 'navgrid', style: 'justify-content:center' }, dots),
+        h('div', { class: 'row', style: 'justify-content:center;margin-top:16px' },
+          h('button', {
+            class: 'btn gold big',
+            onclick: function () {
+              openAchievementCardModal({
+                modeLabel: 'KẾT QUẢ THI THẬT (BAS 123)',
+                right: S.right,
+                total: total,
+                score10: S.score10Str,
+                score10Num: S.score10Num,
+                elapsedMs: S.elapsed
+              });
+            }
+          }, '📸 Xuất ảnh thẻ thành tích'),
+          h('button', { class: 'btn primary', onclick: function () { startRealExam(S.limitMin || 40); } }, '↻ Thi đề mới'),
+          h('button', { class: 'btn', onclick: home }, 'Trang chủ'))),
+      h('div', { class: 'row' },
+        h('h2', { style: 'margin:0' }, 'Chi tiết đáp án bài thi'),
+        h('span', { class: 'spacer' }),
+        h('button', { class: 'btn' + (filter === 'all' ? ' primary' : ''), onclick: function () { renderRealExamResult('all'); } }, 'Tất cả (' + total + ')'),
+        h('button', { class: 'btn' + (filter === 'wrong' ? ' primary' : ''), onclick: function () { renderRealExamResult('wrong'); } }, 'Chỉ câu sai (' + (total - S.right) + ')')),
+      list.length ? list.map(function (it) { return reviewCard(it.q, it); }) : h('p', { class: 'muted' }, 'Tuyệt vời! Bạn không sai câu nào.')));
+  }
+
+  /* ---------- Vẽ & Xuất ảnh thẻ thành tích (HTML5 Canvas 1080x1350) ---------- */
+  var activeCertData = null;
+  var cachedBrandImg = null;
+  (function preloadBrandIcon() {
+    try {
+      var img = new Image();
+      img.onload = function () { cachedBrandImg = img; };
+      img.src = 'icon-192.png';
+    } catch (e) {}
+  })();
+
+  function drawRoundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function renderAchievementCanvas() {
+    var canvas = document.getElementById('certCanvas');
+    if (!canvas || !activeCertData) return;
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width;   // 1080
+    var H = canvas.height;  // 1350
+
+    var nameInput = document.getElementById('certNameInput');
+    var themeSel = document.getElementById('certThemeSelect');
+    var studentName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : 'Sinh viên BAS 123';
+    var theme = themeSel ? themeSel.value : 'crimson';
+
+    var palettes = {
+      crimson: { bg1: '#2a0808', bg2: '#7f1d1d', bg3: '#18090c', accent: '#fbbf24', glow: 'rgba(251,191,36,0.22)', card: 'rgba(255,255,255,0.08)' },
+      navy:    { bg1: '#091124', bg2: '#1e3a8a', bg3: '#070d1a', accent: '#38bdf8', glow: 'rgba(56,189,248,0.22)', card: 'rgba(255,255,255,0.08)' },
+      violet:  { bg1: '#18092b', bg2: '#581c87', bg3: '#0e061a', accent: '#e879f9', glow: 'rgba(232,121,249,0.22)', card: 'rgba(255,255,255,0.08)' }
+    };
+    var pal = palettes[theme] || palettes.crimson;
+
+    // 1. Nền Gradient & Hoa văn học thuật
+    var grad = ctx.createLinearGradient(0, 0, W, H);
+    grad.addColorStop(0, pal.bg1);
+    grad.addColorStop(0.5, pal.bg2);
+    grad.addColorStop(1, pal.bg3);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Vòng hào quang trung tâm
+    var rad = ctx.createRadialGradient(W / 2, 620, 40, W / 2, 620, 460);
+    rad.addColorStop(0, pal.glow);
+    rad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Khung viền kép sang trọng
+    ctx.strokeStyle = pal.accent;
+    ctx.lineWidth = 4;
+    drawRoundRect(ctx, 44, 44, W - 88, H - 88, 36);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 2;
+    drawRoundRect(ctx, 62, 62, W - 124, H - 124, 28);
+    ctx.stroke();
+
+    // 2. Huy hiệu Logo trên cùng
+    var cx = W / 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, 175, 62, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = pal.accent;
+    ctx.stroke();
+    if (cachedBrandImg) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, 175, 52, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(cachedBrandImg, cx - 52, 123, 104, 104);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = pal.accent;
+      ctx.font = 'bold 54px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('★', cx, 177);
+    }
+    ctx.restore();
+
+    // 3. Tiêu đề chứng nhận
+    ctx.textAlign = 'center';
+    ctx.fillStyle = pal.accent;
+    ctx.font = 'bold 26px system-ui, -apple-system, sans-serif';
+    ctx.fillText('HỌC PHẦN TRIẾT HỌC MÁC - LÊNIN (BAS 123)', cx, 282);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 46px system-ui, -apple-system, sans-serif';
+    ctx.fillText(activeCertData.modeLabel || 'CHỨNG NHẬN KẾT QUẢ THI', cx, 344);
+
+    // 4. Thông tin thí sinh & Rank
+    var rankInfo = (typeof window.getCurrentRankInfo === 'function')
+      ? window.getCurrentRankInfo()
+      : { tier: '🥉 Đồng', rp: 0 };
+    var lv = (store && store.economy && store.economy.level) ? store.economy.level : 1;
+
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.font = '24px system-ui, -apple-system, sans-serif';
+    ctx.fillText('THÍ SINH', cx, 422);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 48px system-ui, -apple-system, sans-serif';
+    ctx.fillText(studentName, cx, 478);
+
+    // Pill Rank + Level
+    var badgeText = rankInfo.tier + '  •  Level ' + lv + ' (' + rankInfo.rp + ' RP)';
+    ctx.font = 'bold 25px system-ui, -apple-system, sans-serif';
+    var badgeW = Math.min(820, ctx.measureText(badgeText).width + 64);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    drawRoundRect(ctx, cx - badgeW / 2, 508, badgeW, 52, 26);
+    ctx.fill();
+    ctx.strokeStyle = pal.accent;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = pal.accent;
+    ctx.fillText(badgeText, cx, 542);
+
+    // 5. Huy chương Điểm số hệ 10 ở trung tâm
+    var scoreNum = activeCertData.score10Num != null
+      ? activeCertData.score10Num
+      : (Number(activeCertData.score10) || 0);
+    var grade = classifyScore10(scoreNum);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, 755, 155, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    ctx.fill();
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = pal.accent;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+    ctx.fillText('ĐIỂM HỆ 10', cx, 668);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 104px system-ui, -apple-system, sans-serif';
+    ctx.fillText(String(activeCertData.score10), cx, 768);
+
+    ctx.fillStyle = pal.accent;
+    ctx.font = 'bold 30px system-ui, -apple-system, sans-serif';
+    ctx.fillText('/ 10 ĐIỂM', cx, 835);
+
+    // Xếp loại pill
+    var gradeLabel = 'XẾP LOẠI: ' + grade.short;
+    ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
+    var gW = ctx.measureText(gradeLabel).width + 72;
+    ctx.fillStyle = pal.accent;
+    drawRoundRect(ctx, cx - gW / 2, 938, gW, 56, 28);
+    ctx.fill();
+    ctx.fillStyle = '#111827';
+    ctx.fillText(gradeLabel, cx, 975);
+
+    // 6. 3 ô thông số chi tiết
+    var nowStr = new Date().toLocaleDateString('vi-VN');
+    var statsBoxes = [
+      { k: 'CÂU ĐÚNG', v: activeCertData.right + ' / ' + activeCertData.total },
+      { k: 'THỜI GIAN', v: fmtTime(activeCertData.elapsedMs || 0) },
+      { k: 'NGÀY THI', v: nowStr }
+    ];
+    var boxW = 286;
+    var boxH = 128;
+    var gap = 26;
+    var startX = cx - (boxW * 3 + gap * 2) / 2;
+    var boxY = 1036;
+
+    statsBoxes.forEach(function (b, idx) {
+      var bx = startX + idx * (boxW + gap);
+      ctx.fillStyle = pal.card;
+      drawRoundRect(ctx, bx, boxY, boxW, boxH, 20);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(255,255,255,0.68)';
+      ctx.font = 'bold 21px system-ui, -apple-system, sans-serif';
+      ctx.fillText(b.k, bx + boxW / 2, boxY + 44);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 36px system-ui, -apple-system, sans-serif';
+      ctx.fillText(b.v, bx + boxW / 2, boxY + 94);
+    });
+
+    // 7. Chân thẻ
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = '22px system-ui, -apple-system, sans-serif';
+    ctx.fillText('Ôn tập Triết học Mác - Lênin · k265520103049-a11y.github.io/triet-ml-by-draglok', cx, 1246);
+  }
+
+  function openAchievementCardModal(data) {
+    activeCertData = data;
+    var overlay = document.getElementById('certOverlay');
+    var nameInput = document.getElementById('certNameInput');
+    if (!overlay) return;
+
+    var acc = (typeof window.getCloudAccountInfo === 'function') ? window.getCloudAccountInfo() : null;
+    if (nameInput && !nameInput.value.trim()) {
+      nameInput.value = (acc && acc.name) ? acc.name : 'Sinh viên BAS 123';
+    }
+    overlay.hidden = false;
+    renderAchievementCanvas();
+  }
+
+  function closeAchievementCardModal() {
+    var overlay = document.getElementById('certOverlay');
+    if (overlay) overlay.hidden = true;
+  }
+
+  (function bindCertModalEvents() {
+    var overlay = document.getElementById('certOverlay');
+    var closeX = document.getElementById('certCloseX');
+    var nameInput = document.getElementById('certNameInput');
+    var themeSel = document.getElementById('certThemeSelect');
+    var dlBtn = document.getElementById('certDownloadBtn');
+    var copyBtn = document.getElementById('certCopyBtn');
+
+    if (closeX) closeX.addEventListener('click', closeAchievementCardModal);
+    if (overlay) {
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closeAchievementCardModal();
+      });
+    }
+    document.addEventListener('keydown', function (e) {
+      if (overlay && !overlay.hidden && (e.key === 'Escape' || e.key === 'Esc')) {
+        e.preventDefault();
+        closeAchievementCardModal();
+      }
+    });
+    if (nameInput) nameInput.addEventListener('input', renderAchievementCanvas);
+    if (themeSel) themeSel.addEventListener('change', renderAchievementCanvas);
+
+    if (dlBtn) {
+      dlBtn.addEventListener('click', function () {
+        var canvas = document.getElementById('certCanvas');
+        if (!canvas) return;
+        try {
+          var link = document.createElement('a');
+          link.download = 'the-thanh-tich-triet-ml.png';
+          link.href = canvas.toDataURL('image/png');
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          sfx.ok();
+          toast('✔ Đã tải ảnh thẻ thành tích PNG về máy!', 'ok');
+        } catch (err) {
+          toast('Không thể tải ảnh trực tiếp, bạn hãy nhấn giữ vào ảnh để lưu nhé.', 'info');
+        }
+      });
+    }
+
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function () {
+        var canvas = document.getElementById('certCanvas');
+        if (!canvas || !canvas.toBlob || !navigator.clipboard || typeof ClipboardItem === 'undefined') {
+          toast('Trình duyệt chưa hỗ trợ sao chép ảnh trực tiếp — hãy bấm Tải ảnh PNG nhé!', 'info');
+          return;
+        }
+        canvas.toBlob(function (blob) {
+          if (!blob) return;
+          navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(function () {
+            sfx.ok();
+            toast('✔ Đã sao chép ảnh thẻ! Bạn có thể dán (Ctrl+V) ngay vào Messenger / Zalo.', 'ok');
+          }, function () {
+            toast('Không sao chép được vào clipboard — hãy bấm Tải ảnh PNG nhé!', 'info');
+          });
+        }, 'image/png');
+      });
+    }
+  })();
+
+  /* ==========================================================================
+   * 💀 TÍNH NĂNG 3: CHẾ ĐỘ SINH TỬ (SUDDEN DEATH — SAI 1 CÂU DỪNG CUỘC CHƠI)
+   * ========================================================================== */
+  var SD_SECONDS = 15;
+
+  function drawNextSuddenDeathQuestion() {
+    if (!S || S.view !== 'suddendeath') return;
+    if (!S.deck || !S.deck.length) {
+      S.deck = shuffle(Q);
+    }
+    var q = S.deck.pop();
+    S.current = makeItem(q);
+    S.locked = false;
+    S.picked = null;
+    S.qStart = Date.now();
+    S.lastTickSec = SD_SECONDS;
+    renderSuddenDeath();
+  }
+
+  function startSuddenDeath() {
+    stopTimer();
+    setNav('navGame');
+    if (!Q.length) {
+      toast('Không có dữ liệu câu hỏi.', 'bad');
+      return;
+    }
+    S = {
+      view: 'suddendeath',
+      deck: shuffle(Q),
+      current: null,
+      streak: 0,
+      xuEarned: 0,
+      expEarned: 0,
+      locked: false,
+      over: false,
+      overReason: '',
+      picked: null,
+      qStart: Date.now(),
+      lastTickSec: SD_SECONDS
+    };
+    drawNextSuddenDeathQuestion();
+
+    timer = setInterval(function () {
+      if (!S || S.view !== 'suddendeath' || S.over || S.locked) return;
+      var elapsed = (Date.now() - S.qStart) / 1000;
+      var left = Math.max(0, SD_SECONDS - elapsed);
+      var pct = Math.max(0, Math.min(100, (left / SD_SECONDS) * 100));
+
+      var bar = document.getElementById('sdTimerBar');
+      var txt = document.getElementById('sdTimerText');
+      if (bar) {
+        bar.style.width = pct.toFixed(1) + '%';
+        bar.classList.toggle('warn', left <= 7 && left > 4);
+        bar.classList.toggle('danger', left <= 4);
+      }
+      if (txt) {
+        txt.textContent = left.toFixed(1) + 's';
+      }
+
+      var ceilSec = Math.ceil(left);
+      if (ceilSec <= 4 && ceilSec >= 1 && ceilSec < S.lastTickSec) {
+        S.lastTickSec = ceilSec;
+        if (sfx && typeof sfx.tick === 'function') sfx.tick();
+      }
+
+      if (left <= 0) {
+        endSuddenDeath('⏰ Hết 15 giây suy nghĩ!');
+      }
+    }, 100);
+  }
+
+  function pickSuddenDeath(k) {
+    if (!S || S.view !== 'suddendeath' || S.locked || S.over || !S.current) return;
+    S.locked = true;
+    S.picked = k;
+    S.current.picked = k;
+    var ok = S.current.order[k] === S.current.q.a;
+
+    if (ok) {
+      S.streak += 1;
+      var mult = 1 + Math.floor(S.streak / 5) * 0.5;
+      var stepXu = Math.round(4 * mult);
+      var milestoneBonus = (S.streak % 5 === 0) ? (S.streak * 2) : 0;
+      S.xuEarned += (stepXu + milestoneBonus);
+      S.expEarned += 12;
+
+      record(S.current.q, true, true);
+      if (sfx && typeof sfx.ok === 'function') sfx.ok();
+      renderSuddenDeath();
+
+      if (milestoneBonus > 0) {
+        toast('🔥 Chuỗi ' + S.streak + ' câu Sinh tử! Thưởng nóng +' + milestoneBonus + ' Xu Triết!', 'ok');
+      }
+      window.setTimeout(function () {
+        if (S && S.view === 'suddendeath' && !S.over) {
+          drawNextSuddenDeathQuestion();
+        }
+      }, 480);
+    } else {
+      record(S.current.q, false, true);
+      endSuddenDeath('❌ Bạn đã chọn sai đáp án!');
+    }
+  }
+
+  function endSuddenDeath(reasonText) {
+    if (!S || S.view !== 'suddendeath' || S.over) return;
+    S.over = true;
+    S.locked = true;
+    S.overReason = reasonText || 'Cuộc chơi kết thúc!';
+    stopTimer();
+    if (sfx && typeof sfx.bad === 'function') sfx.bad();
+
+    var st = stat('suddendeath');
+    var prevBest = st.best || 0;
+    st.runs++;
+    st.completed++;
+    var isNewRecord = S.streak > prevBest;
+    if (isNewRecord) st.best = S.streak;
+    S.isNewRecord = isNewRecord;
+
+    var finalXu = S.xuEarned + (S.streak > 0 ? 10 : 0);
+    var finalExp = S.expEarned + (S.streak > 0 ? 20 : 5);
+    S.finalReward = recordGameComplete('Chế độ Sinh tử', finalXu, finalExp);
+    if (isNewRecord && S.streak >= 5) {
+      launchConfetti(36);
+    }
+    renderSuddenDeath();
+  }
+
+  function renderSuddenDeath() {
+    var it = S.current;
+    if (!it) return;
+    var mult = (1 + Math.floor(S.streak / 5) * 0.5).toFixed(1).replace(/\.0$/, '');
+
+    if (S.over) {
+      mount(h('div', { class: 'stack' },
+        h('div', { class: 'card score' },
+          h('div', { class: 'eyebrow' }, '💀 CHẾ ĐỘ SINH TỬ · GAME OVER'),
+          h('h2', { style: 'margin:4px 0;color:var(--bad)' }, S.overReason),
+          h('div', { class: 'big' }, S.streak + ' câu'),
+          h('p', { style: 'margin:4px 0' },
+            S.isNewRecord && S.streak > 0
+              ? h('b', { style: 'color:var(--gold)' }, '🏆 KỶ LỤC MỚI! (Kỷ lục cũ: ' + (stat('suddendeath').best === S.streak ? 'đã bị phá vỡ' : stat('suddendeath').best) + ')')
+              : ('Kỷ lục cá nhân cao nhất: ' + (stat('suddendeath').best || 0) + ' câu')),
+          S.finalReward
+            ? h('p', { class: 'ok-t' }, '🎁 Tổng thưởng nhận được: +' + S.finalReward.xu + ' Xu Triết & +' + S.finalReward.exp + ' EXP')
+            : null,
+          h('div', { class: 'row', style: 'justify-content:center;margin-top:14px' },
+            h('button', { class: 'btn primary big', onclick: startSuddenDeath }, '🔥 Chơi lại ngay'),
+            h('button', { class: 'btn', onclick: gameMenu }, '📺 Đấu trường Gameshow'),
+            h('button', { class: 'btn', onclick: home }, 'Trang chủ'))),
+        h('h2', { style: 'margin:0' }, 'Câu hỏi đã dừng bước'),
+        reviewCard(it.q, it)));
+      return;
+    }
+
+    var cp = correctPos(it);
+    var opts = [0, 1, 2, 3].map(function (k) {
+      var state = '';
+      if (S.locked) {
+        if (k === cp) state = 'correct locked';
+        else if (k === S.picked) state = 'wrong locked';
+        else state = 'dim locked';
+      }
+      return optionButton(it, k, state, function () { pickSuddenDeath(k); });
+    });
+
+    var left = Math.max(0, SD_SECONDS - (Date.now() - S.qStart) / 1000);
+    var pct = Math.max(0, Math.min(100, (left / SD_SECONDS) * 100));
+
+    mount(h('div', { class: 'stack' },
+      h('div', { class: 'hud' },
+        h('div', null, h('b', null, '💀 Chế độ Sinh tử (Sai 1 câu dừng ngay)')),
+        h('div', { class: 'stats' },
+          h('span', null, '🔥 Chuỗi: ', h('b', null, S.streak)),
+          h('span', null, '⚡ Hệ số Xu: ', h('b', null, 'x' + mult)),
+          h('span', null, '⏱ ', h('b', { id: 'sdTimerText' }, left.toFixed(1) + 's')))),
+      h('div', { class: 'sd-timer-wrap', title: 'Thời gian còn lại của câu hiện tại' },
+        h('div', {
+          id: 'sdTimerBar',
+          class: 'sd-timer-bar' + (left <= 4 ? ' danger' : (left <= 7 ? ' warn' : '')),
+          style: 'width:' + pct.toFixed(1) + '%'
+        })),
+      h('div', { class: 'card qcard' },
+        qHeader(it, 'Câu sinh tử #' + (S.streak + 1)),
+        h('div', { class: 'qtext' }, it.q.q),
+        h('div', { class: 'opts' }, opts)),
+      h('div', { class: 'row', style: 'justify-content:center' },
+        h('button', {
+          class: 'btn ghost',
+          onclick: function () {
+            askConfirm({
+              icon: '🛑',
+              title: 'Dừng lượt Sinh tử?',
+              message: 'Bạn đang có chuỗi ' + S.streak + ' câu. Nếu dừng bây giờ bạn vẫn nhận được phần thưởng hiện tại.',
+              okText: 'Dừng & nhận thưởng'
+            }, function () { endSuddenDeath('🛑 Bạn đã chủ động dừng cuộc chơi.'); });
+          }
+        }, '🛑 Dừng cuộc chơi & nhận thưởng')),
+      kbdBar([['1-4 / A-D', 'Chọn đáp án cực nhanh'], ['S', 'Đánh dấu câu hỏi']])));
+  }
 
   /* ---------- Khởi động ---------- */
   document.getElementById('navHome').addEventListener('click', home);

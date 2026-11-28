@@ -383,6 +383,45 @@
     return await syncToCloud(true);
   };
 
+  window.getCurrentRankInfo = function () {
+    return {
+      rp: rankData.rp,
+      tier: getRankTier(rankData.rp),
+      correctCount: rankData.correctCount,
+      studyMinutes: rankData.studyMinutes
+    };
+  };
+
+  window.submitQuestionReport = async function (report) {
+    if (!report || typeof report !== 'object') {
+      throw new Error('Dữ liệu báo lỗi không hợp lệ.');
+    }
+    const payload = {
+      qid: String(report.qid || '').slice(0, 40),
+      ch: Math.max(0, Math.floor(Number(report.ch) || 0)),
+      n: Math.max(0, Math.floor(Number(report.n) || 0)),
+      questionText: String(report.questionText || '').slice(0, 600),
+      currentAnswer: String(report.currentAnswer || '').slice(0, 240),
+      reason: String(report.reason || 'Sai đáp án đúng').slice(0, 80),
+      note: String(report.note || '').slice(0, 350),
+      reporterUid: currentUser ? currentUser.uid : 'guest',
+      reporterName: (currentUser
+        ? (currentUser.displayName || (currentUser.email ? currentUser.email.split('@')[0] : 'Học viên'))
+        : 'Khách').slice(0, 40),
+      appVersion: 'v5.0',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+      const localList = JSON.parse(localStorage.getItem('mln-question-reports') || '[]');
+      localList.unshift(Object.assign({}, payload, { createdAt: Date.now() }));
+      localStorage.setItem('mln-question-reports', JSON.stringify(localList.slice(0, 30)));
+    } catch (e) {}
+
+    await db.collection('reports').add(payload);
+    return true;
+  };
+
   // 4. BỘ ĐẾM THỜI GIAN HỌC THỰC TẾ (Chỉ cộng khi có thao tác học thật & đủ 58s thực)
   setInterval(function () {
     const now = Date.now();

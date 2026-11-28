@@ -885,3 +885,177 @@ html.support-open,html.support-open body{overflow:hidden}
 @media(max-width:650px){
   .custom-bg-controls{grid-template-columns:1fr}
 }
+
+
+/* ==========================================================================
+ * TÍNH NĂNG MỚI v5.0: CHANGELOG, BÁO LỖI CÂU HỎI, THI THẬT & SINH TỬ
+ * ========================================================================== */
+.changelog-dialog{max-width:520px;text-align:left}
+.changelog-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  max-height:52vh;
+  overflow-y:auto;
+  padding-right:4px;
+  margin-top:10px;
+}
+.changelog-item{
+  padding:11px 13px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:color-mix(in srgb,var(--bg) 65%,var(--panel));
+}
+.changelog-item.highlight{
+  border-color:color-mix(in srgb,var(--accent) 45%,var(--line));
+  background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 7%,var(--panel)),var(--panel));
+}
+.changelog-item h4{margin:4px 0 4px;font-size:14.5px;color:var(--ink)}
+.changelog-item p{margin:0;font-size:13px;line-height:1.45;color:var(--muted)}
+.changelog-badge{
+  display:inline-block;
+  font-size:10.5px;
+  font-weight:700;
+  letter-spacing:.04em;
+  padding:2px 8px;
+  border-radius:999px;
+  background:var(--accent);
+  color:var(--accent-ink);
+}
+
+/* Nút Báo lỗi câu hỏi */
+.btn-report-q{
+  padding:4px 9px;
+  font-size:12px;
+  border-radius:8px;
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--muted);
+  cursor:pointer;
+  transition:all .15s ease;
+}
+.btn-report-q:hover{
+  border-color:var(--bad);
+  color:var(--bad);
+  background:color-mix(in srgb,var(--bad) 8%,transparent);
+}
+.report-dialog{max-width:460px;text-align:left}
+.report-q-preview{
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid var(--line);
+  background:color-mix(in srgb,var(--bg) 75%,var(--panel));
+  font-size:13px;
+  line-height:1.45;
+  margin-bottom:10px;
+  max-height:110px;
+  overflow-y:auto;
+}
+.report-reasons{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:7px;
+  margin-bottom:10px;
+}
+.report-reason-opt{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 11px;
+  border-radius:9px;
+  border:1px solid var(--line);
+  background:var(--panel);
+  cursor:pointer;
+  font-size:13.5px;
+}
+.report-reason-opt:has(input:checked){
+  border-color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 8%,var(--panel));
+  font-weight:600;
+}
+.report-note{
+  width:100%;
+  box-sizing:border-box;
+  padding:9px 11px;
+  border-radius:10px;
+  border:1px solid var(--line);
+  background:var(--bg);
+  color:var(--ink);
+  font:inherit;
+  font-size:13px;
+  resize:vertical;
+}
+
+/* Thi thật (Thang điểm 10) & Thẻ thành tích */
+.card.realexam{
+  border-top:4px solid var(--accent);
+}
+.nav-dot.flagged{
+  box-shadow:0 0 0 2px #f59e0b;
+}
+.grade-pill{
+  display:inline-block;
+  padding:5px 14px;
+  border-radius:999px;
+  font-weight:700;
+  font-size:14px;
+  margin:6px 0 8px;
+}
+.grade-pill.grade-s{background:rgba(245,158,11,.18);color:#d97706;border:1px solid rgba(245,158,11,.45)}
+.grade-pill.grade-a{background:rgba(22,128,74,.16);color:var(--good);border:1px solid rgba(22,128,74,.4)}
+.grade-pill.grade-b{background:rgba(37,99,235,.15);color:#2563eb;border:1px solid rgba(37,99,235,.35)}
+.grade-pill.grade-c{background:rgba(100,116,139,.16);color:var(--muted);border:1px solid var(--line)}
+.grade-pill.grade-f{background:rgba(196,50,50,.15);color:var(--bad);border:1px solid rgba(196,50,50,.4)}
+
+.cert-dialog{max-width:480px;text-align:left}
+.cert-controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-bottom:10px;
+}
+.cert-canvas-wrap{
+  width:100%;
+  max-height:54vh;
+  overflow-y:auto;
+  border-radius:12px;
+  border:1px solid var(--line);
+  background:#090d16;
+  display:flex;
+  justify-content:center;
+  padding:6px;
+}
+#certCanvas{
+  width:100%;
+  max-width:340px;
+  height:auto;
+  border-radius:10px;
+  display:block;
+}
+
+/* Chế độ Sinh tử (Sudden Death) */
+.sd-timer-wrap{
+  width:100%;
+  height:12px;
+  border-radius:999px;
+  background:color-mix(in srgb,var(--line) 75%,transparent);
+  overflow:hidden;
+  border:1px solid var(--line);
+}
+.sd-timer-bar{
+  height:100%;
+  width:100%;
+  background:linear-gradient(90deg,#16a34a,#22c55e);
+  transition:width .1s linear,background-color .2s ease;
+}
+.sd-timer-bar.warn{
+  background:linear-gradient(90deg,#d97706,#f59e0b);
+}
+.sd-timer-bar.danger{
+  background:linear-gradient(90deg,#b91c1c,#ef4444);
+  animation:sdPulse .45s infinite alternate;
+}
+@keyframes sdPulse{
+  from{opacity:1}
+  to{opacity:.55}
+}

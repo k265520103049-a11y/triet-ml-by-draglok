@@ -61,5 +61,38 @@ service cloud.firestore {
                 >= (request.resource.data.correctCount - resource.data.correctCount) * 2000
            );
     }
+
+    // Phản hồi báo lỗi câu hỏi / đáp án từ người học
+    match /reports/{reportId} {
+      allow read, update, delete: if false;
+      allow create: if request.resource.data.keys().hasAll([
+          'qid', 'ch', 'n', 'questionText', 'currentAnswer', 'reason', 'note', 'reporterUid', 'reporterName', 'appVersion'
+        ])
+        && request.resource.data.qid is string
+        && request.resource.data.qid.size() >= 1
+        && request.resource.data.qid.size() <= 40
+        && request.resource.data.ch is int
+        && request.resource.data.ch >= 0
+        && request.resource.data.ch <= 10
+        && request.resource.data.n is int
+        && request.resource.data.n >= 0
+        && request.resource.data.n <= 1000
+        && request.resource.data.questionText is string
+        && request.resource.data.questionText.size() >= 1
+        && request.resource.data.questionText.size() <= 600
+        && request.resource.data.currentAnswer is string
+        && request.resource.data.currentAnswer.size() <= 240
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() >= 1
+        && request.resource.data.reason.size() <= 80
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 350
+        && request.resource.data.reporterUid is string
+        && request.resource.data.reporterUid.size() <= 128
+        && request.resource.data.reporterName is string
+        && request.resource.data.reporterName.size() <= 40
+        && request.resource.data.appVersion is string
+        && request.resource.data.appVersion.size() <= 20;
+    }
   }
 }
