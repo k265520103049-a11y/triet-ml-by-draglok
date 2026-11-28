@@ -9,3 +9,14 @@
 - **📖 Hướng dẫn & Quản lý Thêm / Xóa câu hỏi**: Tích hợp trình thêm câu hỏi mới và xóa/ẩn câu hỏi ngay trên giao diện web (lưu cục bộ & xuất/nhập JSON), kèm hướng dẫn chỉnh sửa `questions.js`.
 - **Popup ủng hộ 2 chế độ**: Hỗ trợ **Đóng một lần** (tải lại trang vẫn hiện) và **Ẩn trong 2 giờ** (tạm ẩn trong 2 giờ rồi tự hiện lại).
 - **Logo ứng dụng TRIẾT ML**: Đồng bộ trên thanh tiêu đề, favicon và biểu tượng cài đặt PWA (`icon-192.png`, `icon-512.png`, `logo.png`).
+
+## Hệ thống Xếp hạng & Bảo mật (Anti-Cheat v4)
+- **Các bậc Rank**:
+  - `🥉 Đồng`: 0 – 199 RP
+  - `🥈 Bạc`: 200 – 599 RP
+  - `🥇 Vàng`: 600 – 1.499 RP
+  - `💠 Bạch Kim`: 1.500 – 3.499 RP
+  - `💎 Kim Cương`: 3.500 – 6.999 RP
+  - `👑 Cao Thủ Triết Học`: 7.000+ RP
+  - `🔥 Thách Đấu`: Dành riêng cho **Top 3** người chơi có điểm cao nhất đạt từ **15.000 RP** trở lên.
+- **Kích hoạt luật bảo mật máy chủ (Firestore Rules)**: Copy toàn bộ nội dung file `firestore.rules` dán vào **Firebase Console → Firestore Database → Rules** rồi bấm **Publish**.

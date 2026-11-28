@@ -16,6 +16,67 @@
   var MIX_SIZE = 40;
   var STORE_KEY = 'mln-ontap-v1';
 
+  /* ---------- Bảo mật & Chống gian lận Client (Anti-Cheat v4) ---------- */
+  var lastTrustedInputAt = Date.now();
+  ['pointerdown', 'click', 'keydown', 'touchstart'].forEach(function (evName) {
+    document.addEventListener(evName, function (ev) {
+      if (ev && ev.isTrusted) {
+        lastTrustedInputAt = Date.now();
+      }
+    }, true);
+  });
+
+  function isTrustedUserAction(maxAgeMs) {
+    return (Date.now() - lastTrustedInputAt) <= (maxAgeMs || 4500);
+  }
+
+  function computeAppSig(obj) {
+    if (!obj || typeof obj !== 'object') return '';
+    var eco = obj.economy || {};
+    var seenCnt = obj.seen && typeof obj.seen === 'object' ? Object.keys(obj.seen).length : 0;
+    var wrongCnt = obj.wrong && typeof obj.wrong === 'object' ? Object.keys(obj.wrong).length : 0;
+    var payload = [
+      'TRIET_AC_V4_APP',
+      Math.max(0, Number(eco.xu) || 0),
+      Math.max(0, Number(eco.totalXuEarned) || 0),
+      Math.max(0, Number(eco.exp) || 0),
+      Math.max(1, Number(eco.level) || 1),
+      seenCnt,
+      wrongCnt,
+      Number(obj.lastModified) || 0
+    ].join('|');
+    var h1 = 0x811c9dc5;
+    var h2 = 0x01000193;
+    for (var i = 0; i < payload.length; i++) {
+      var c = payload.charCodeAt(i);
+      h1 ^= c;
+      h1 = Math.imul(h1, 0x01000193);
+      h2 ^= (c + i);
+      h2 = Math.imul(h2, 0x85ebca6b);
+    }
+    return ((h1 >>> 0).toString(16) + (h2 >>> 0).toString(16));
+  }
+
+  function verifyAppIntegrity(raw) {
+    if (!raw || typeof raw !== 'object') return false;
+    var eco = raw.economy || {};
+    var xu = Number(eco.xu) || 0;
+    var totalXu = Number(eco.totalXuEarned) || 0;
+    var lv = Number(eco.level) || 1;
+    if (xu < 0 || totalXu < 0 || xu > totalXu + 500 || lv < 1 || lv > 500) return false;
+    if (!raw._sig) {
+      return xu <= 25000 && totalXu <= 50000 && lv <= 80;
+    }
+    return raw._sig === computeAppSig(raw);
+  }
+
+  var bridgeReceiver = null;
+  function emitToRankBridge(evt) {
+    if (typeof bridgeReceiver === 'function') {
+      try { bridgeReceiver(evt); } catch (e) {}
+    }
+  }
+
   /* ---------- Cấu trúc chương / mục ---------- */
   var CHAPTERS = {
     1: {
@@ -216,7 +277,12 @@
 
   function load() {
     try {
-      return norm(JSON.parse(localStorage.getItem(STORE_KEY) || '{}'));
+      var raw = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+      if (!raw || typeof raw !== 'object') return defaults();
+      if (!verifyAppIntegrity(raw)) {
+        return defaults();
+      }
+      return norm(raw);
     } catch (e) {
       return defaults();
     }
@@ -256,32 +322,43 @@
     if (!skipCloudNotify) {
       store.lastModified = Date.now();
     }
+    store._sig = computeAppSig(store);
     try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
     updateWrongBadge();
     renderHud();
-    if (!skipCloudNotify && typeof window.notifyAppProgressChanged === 'function') {
-      window.notifyAppProgressChanged();
+    if (!skipCloudNotify) {
+      emitToRankBridge({ type: 'progress_changed' });
     }
   }
 
-  window.applySyncedAppProgress = function (cloudRaw) {
-    store = norm(cloudRaw || {});
-    rebuildQuestionBank();
-    save(true);
-    applyCosmetics();
-    if (!S) {
-      home();
+  window.__trietSecureBind = function (handler) {
+    try { delete window.__trietSecureBind; } catch (e) { window.__trietSecureBind = undefined; }
+    if (typeof handler === 'function') {
+      bridgeReceiver = handler;
     }
-  };
-
-  window.resetLocalAppProgress = function () {
-    store = defaults();
-    rebuildQuestionBank();
-    save(true);
-    applyCosmetics();
-    if (!S) {
-      home();
-    }
+    return {
+      applySyncedAppProgress: function (cloudRaw) {
+        store = norm(cloudRaw || {});
+        rebuildQuestionBank();
+        save(true);
+        applyCosmetics();
+        if (!S) {
+          home();
+        }
+      },
+      resetLocalAppProgress: function () {
+        store = defaults();
+        rebuildQuestionBank();
+        save(true);
+        applyCosmetics();
+        if (!S) {
+          home();
+        }
+      },
+      notifyToast: function (msg, type) {
+        toast(msg, type || 'info');
+      }
+    };
   };
 
   /* ---------- Hệ thống Xu Triết, EXP, Level & Nhiệm vụ ngày ---------- */
@@ -442,7 +519,12 @@
     return 0;
   }
 
-  function record(q, ok, silent) {
+  function record(q, ok, silent, opts) {
+    var isBatch = opts && opts.mode === 'batch';
+    var trusted = isBatch ? true : isTrustedUserAction(4500);
+    if (!trusted) {
+      return;
+    }
     ensureDailyToday();
     if (ok) {
       store.seen[q.id] = 1;
@@ -461,8 +543,14 @@
       if (!silent) sfx.bad();
     }
     bumpActivity();
-    if (typeof window.recordQuizAnswer === 'function') {
-      window.recordQuizAnswer(!!ok);
+    if (!isBatch) {
+      emitToRankBridge({
+        type: 'answer',
+        ok: !!ok,
+        qid: q && q.id ? String(q.id) : '',
+        trusted: true,
+        gestureAge: Date.now() - lastTrustedInputAt
+      });
     }
   }
 
@@ -548,6 +636,9 @@
   }
 
   function setNav(activeId) {
+    if (isTrustedUserAction(3000)) {
+      emitToRankBridge({ type: 'study_activity' });
+    }
     var ids = ['navHome', 'navBrowse', 'navTheory', 'navGame', 'navShop', 'navStats', 'navWrong', 'navGuide', 'navSettings'];
     ids.forEach(function (id) {
       var el = document.getElementById(id);
@@ -969,6 +1060,9 @@
           return;
         }
         var imported = norm(candidate);
+        if (!verifyAppIntegrity(candidate)) {
+          imported.economy = defaults().economy;
+        }
         var seenCount = Object.keys(imported.seen).length;
         askConfirm({
           icon: '📥',
@@ -1531,13 +1625,24 @@
     var finalize = function () {
       S.submitted = true; stopTimer(); store.sessions.mix = null;
       var right = 0;
+      var okQids = [];
       S.items.forEach(function (it) {
         var ok = it.picked !== null && it.order[it.picked] === it.q.a;
-        if (ok) right++;
-        record(it.q, ok, true);
+        if (ok) {
+          right++;
+          if (it.q && it.q.id) okQids.push(String(it.q.id));
+        }
+        record(it.q, ok, true, { mode: 'batch' });
       });
       S.right = right;
       S.elapsed = S.limit ? Math.min(Date.now() - S.start, S.limit) : Date.now() - S.start;
+      emitToRankBridge({
+        type: 'batch_answers',
+        okCount: right,
+        qids: okQids,
+        elapsedMs: S.elapsed,
+        trusted: true
+      });
       var st = stat('mix'); st.runs++; st.completed++; if (right > st.best) st.best = right;
       var bonus = awardProgress(right * 2, 50, null, true);
       S.mixBonus = bonus;

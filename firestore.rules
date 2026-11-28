@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /leaderboard/{userId} {
+      // Mọi người đều xem được BXH
+      allow read: if true;
+
+      // Chặn xóa document từ client (chỉ Admin xóa được trong Firebase Console)
+      allow delete: if false;
+
+      function isValidDoc(data) {
+        return data.keys().hasAll(['name', 'rp', 'correctCount', 'studyMinutes', 'tier'])
+          && data.name is string
+          && data.name.size() >= 1
+          && data.name.size() <= 40
+          && data.tier is string
+          && data.tier.size() <= 40
+          && data.rp is int
+          && data.rp >= 0
+          && data.rp <= 30000
+          && data.correctCount is int
+          && data.correctCount >= 0
+          && data.correctCount <= 3000
+          && data.studyMinutes is int
+          && data.studyMinutes >= 0
+          && data.studyMinutes <= 10000
+          // Ràng buộc toán học: tối đa 10 RP/câu + trung bình 3 RP chuỗi 5 + 2 RP/phút
+          && data.rp <= (data.correctCount * 13 + data.studyMinutes * 2)
+          && (!('appProgressJson' in data) || (data.appProgressJson is string && data.appProgressJson.size() <= 350000));
+      }
+
+      // Tạo tài khoản mới (cho phép mang tối đa 1500 RP từ chế độ Khách sang)
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && isValidDoc(request.resource.data)
+        && request.resource.data.rp <= 1500
+        && request.resource.data.correctCount <= 120
+        && request.resource.data.studyMinutes <= 180;
+
+      // Cập nhật tiến độ: kiểm tra chênh lệch điểm & tốc độ làm bài theo thời gian thực
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && isValidDoc(request.resource.data)
+        && request.resource.data.correctCount >= resource.data.correctCount
+        && request.resource.data.studyMinutes >= resource.data.studyMinutes
+        && request.resource.data.rp >= resource.data.rp
+        // Chênh lệch RP không được vượt quá công thức của số câu & số phút tăng thêm
+        && (request.resource.data.rp - resource.data.rp) <= (
+             (request.resource.data.correctCount - resource.data.correctCount) * 13
+             + (request.resource.data.studyMinutes - resource.data.studyMinutes) * 2
+           )
+        // Giới hạn tối đa mỗi lần đồng bộ (tránh bơm cục lớn)
+        && (request.resource.data.correctCount - resource.data.correctCount) <= 45
+        && (request.resource.data.rp - resource.data.rp) <= 600
+        // Chống spam tốc độ cao: nếu tăng > 3 câu đúng, bắt buộc tối thiểu 2 giây/câu kể từ lần sync trước
+        && (
+             !('updatedAt' in resource.data)
+             || !(resource.data.updatedAt is timestamp)
+             || (request.resource.data.correctCount - resource.data.correctCount) <= 3
+             || (request.time.toMillis() - resource.data.updatedAt.toMillis())
+                >= (request.resource.data.correctCount - resource.data.correctCount) * 2000
+           );
+    }
+  }
+}
