@@ -1,5 +1,5 @@
 /* Service worker: ưu tiên mạng (luôn lấy bản mới nhất), mất mạng thì dùng bản đã lưu. */
-var CACHE = 'mln-gameshow-v15';
+var CACHE = 'mln-gameshow-v16';
 var FILES = [
   './',
   'index.html',

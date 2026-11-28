@@ -21,8 +21,15 @@
   const APP_STORE_KEY = 'mln-ontap-v1';
   const RANK_STORE_KEY = 'triet_rank_data';
   const ACTIVE_UID_KEY = 'mln-active-uid';
+  const RESET_ACK_PREFIX = 'mln-admin-reset-ack__';
+  const ADMIN_UID = 'np7u77LPOxel3f1A4CLDn70WSX22';
   const CHALLENGER_MIN_RP = 15000;
   const CHALLENGER_TOP_N = 3;
+
+  function isAdminUser(user) {
+    const u = user || currentUser;
+    return !!(u && u.uid === ADMIN_UID);
+  }
 
   function userAppKey(uid) {
     return APP_STORE_KEY + '__uid_' + uid;
@@ -109,6 +116,8 @@
 
   let currentUser = null;
   let isCurrentUserChallenger = false;
+  let isCurrentUserBanned = false;
+  let currentBanReason = '';
   let lastChallengerCheckAt = 0;
   let needSync = false;
   let isSyncing = false;
@@ -164,7 +173,7 @@
   }
 
   async function refreshChallengerStatus(forceCheck) {
-    if (!currentUser || rankData.rp < CHALLENGER_MIN_RP) {
+    if (!currentUser || isAdminUser() || isCurrentUserBanned || rankData.rp < CHALLENGER_MIN_RP) {
       if (isCurrentUserChallenger) {
         isCurrentUserChallenger = false;
         updateRankUI();
@@ -179,9 +188,13 @@
     try {
       const higherSnap = await db.collection('leaderboard')
         .where('rp', '>', rankData.rp)
-        .limit(CHALLENGER_TOP_N)
+        .limit(CHALLENGER_TOP_N + 1)
         .get();
-      const qualified = higherSnap.size < CHALLENGER_TOP_N;
+      let higherCount = 0;
+      higherSnap.forEach(function (d) {
+        if (d.id !== ADMIN_UID) higherCount += 1;
+      });
+      const qualified = higherCount < CHALLENGER_TOP_N;
       if (qualified !== isCurrentUserChallenger) {
         isCurrentUserChallenger = qualified;
         updateRankUI();
@@ -197,19 +210,30 @@
     const userInfo = document.getElementById('user-info');
     const btnLogin = document.getElementById('btn-google-login');
     const btnLogout = document.getElementById('btn-logout');
+    const btnAdmin = document.getElementById('btn-open-admin');
     if (!userInfo) return;
 
     if (currentUser) {
       const avatar = currentUser.photoURL
         ? '<img src="' + escapeHtml(currentUser.photoURL) + '" style="width:22px;height:22px;border-radius:50%;vertical-align:middle;margin-right:6px;">'
         : '🎓 ';
-      const name = escapeHtml(currentUser.displayName || currentUser.email.split('@')[0]);
-      userInfo.innerHTML = avatar + '<strong>' + name + '</strong> • <span id="rank-badge">' + tier + ' (' + rankData.rp + ' RP)</span>';
+      const name = escapeHtml(currentUser.displayName || (currentUser.email ? currentUser.email.split('@')[0] : 'Học viên'));
+      if (isAdminUser()) {
+        userInfo.innerHTML = avatar + '<strong>' + name + '</strong> <span class="admin-badge">👑 Quản trị viên (Ẩn BXH)</span>';
+        if (btnAdmin) btnAdmin.style.display = 'inline-block';
+      } else if (isCurrentUserBanned) {
+        userInfo.innerHTML = avatar + '<strong>' + name + '</strong> <span class="ban-badge" title="' + escapeHtml(currentBanReason) + '">🚫 Bị khóa BXH</span>';
+        if (btnAdmin) btnAdmin.style.display = 'none';
+      } else {
+        userInfo.innerHTML = avatar + '<strong>' + name + '</strong> • <span id="rank-badge">' + tier + ' (' + rankData.rp + ' RP)</span>';
+        if (btnAdmin) btnAdmin.style.display = 'none';
+      }
       if (btnLogin) btnLogin.style.display = 'none';
       if (btnLogout) btnLogout.style.display = 'inline-block';
     } else {
       userInfo.innerHTML = 'Khách • <strong id="rank-badge">' + tier + ' (' + rankData.rp + ' RP)</strong>';
       setSyncStatus('');
+      if (btnAdmin) btnAdmin.style.display = 'none';
       if (btnLogin) {
         btnLogin.textContent = "Đăng nhập / Leo Rank";
         btnLogin.style.display = 'inline-block';
@@ -237,6 +261,16 @@
 
   function scheduleCloudSync() {
     if (!currentUser) return;
+    if (isAdminUser()) {
+      needSync = false;
+      setSyncStatus('👑 Chế độ Admin (Ẩn BXH)', '#fbbf24');
+      return;
+    }
+    if (isCurrentUserBanned) {
+      needSync = false;
+      setSyncStatus('🚫 Tài khoản bị khóa BXH', '#f87171');
+      return;
+    }
     setSyncStatus('• Chờ đồng bộ...', '#fbbf24');
     if (debounceSyncTimer) clearTimeout(debounceSyncTimer);
     debounceSyncTimer = setTimeout(function () {
@@ -586,7 +620,7 @@
       clearTimeout(debounceSyncTimer);
       debounceSyncTimer = null;
     }
-    if (currentUser) {
+    if (currentUser && !isAdminUser() && !isCurrentUserBanned) {
       needSync = true;
       await syncToCloud(true);
     }
@@ -599,7 +633,11 @@
     rankData = defaultRankData();
     currentUser = null;
     isCurrentUserChallenger = false;
+    isCurrentUserBanned = false;
+    currentBanReason = '';
     needSync = false;
+    const adminModal = document.getElementById('admin-modal');
+    if (adminModal) adminModal.style.display = 'none';
     updateRankUI();
     if (appBridge && typeof appBridge.resetLocalAppProgress === 'function') {
       appBridge.resetLocalAppProgress();
@@ -712,6 +750,16 @@
 
   async function syncToCloud(force) {
     if (!currentUser) return false;
+    if (isAdminUser()) {
+      needSync = false;
+      setSyncStatus('👑 Chế độ Admin (Ẩn BXH)', '#fbbf24');
+      return true;
+    }
+    if (isCurrentUserBanned) {
+      needSync = false;
+      setSyncStatus('🚫 Tài khoản bị khóa BXH', '#f87171');
+      return false;
+    }
     if (!force && !needSync) return true;
     if (isSyncing && !force) return false;
 
@@ -722,7 +770,7 @@
     isSyncing = true;
     setSyncStatus('🔄 Đang đồng bộ...', '#38bdf8');
     try {
-      const displayName = (currentUser.displayName || currentUser.email.split('@')[0]).slice(0, 40);
+      const displayName = (currentUser.displayName || (currentUser.email ? currentUser.email.split('@')[0] : 'Học viên')).slice(0, 40);
       const appJson = localStorage.getItem(APP_STORE_KEY) || '';
       if (appJson) {
         try { localStorage.setItem(userAppKey(currentUser.uid), appJson); } catch (e) {}
@@ -754,22 +802,44 @@
   }
 
   setInterval(function () {
-    if (needSync) syncToCloud(false);
+    if (needSync && !isAdminUser() && !isCurrentUserBanned) syncToCloud(false);
   }, 45000);
 
   document.addEventListener('visibilitychange', function () {
-    if (document.hidden && needSync) syncToCloud(true);
+    if (document.hidden && needSync && !isAdminUser() && !isCurrentUserBanned) syncToCloud(true);
   });
 
   window.addEventListener('pagehide', function () {
-    if (needSync) syncToCloud(true);
+    if (needSync && !isAdminUser() && !isCurrentUserBanned) syncToCloud(true);
   });
 
   auth.onAuthStateChanged(async function (user) {
     currentUser = user;
     isCurrentUserChallenger = false;
+    isCurrentUserBanned = false;
+    currentBanReason = '';
+
     if (!user) {
       updateRankUI();
+      return;
+    }
+
+    // Nếu là Admin: ẩn popup ủng hộ, giữ tiến độ học cục bộ trên máy, tuyệt đối không ghi lên BXH
+    if (isAdminUser(user)) {
+      window.__trietSkipSupportAuto = true;
+      const supOverlay = document.getElementById('supportOverlay');
+      if (supOverlay && !supOverlay.hidden) {
+        supOverlay.hidden = true;
+        document.documentElement.classList.remove('support-open');
+      }
+      const localAdminApp = parseJsonSafe(localStorage.getItem(APP_STORE_KEY)) || parseJsonSafe(localStorage.getItem(userAppKey(user.uid)));
+      localStorage.setItem(ACTIVE_UID_KEY, user.uid);
+      if (localAdminApp && appBridge && typeof appBridge.applySyncedAppProgress === 'function') {
+        appBridge.applySyncedAppProgress(localAdminApp);
+      }
+      needSync = false;
+      updateRankUI();
+      setSyncStatus('👑 Chế độ Admin (Ẩn BXH)', '#fbbf24');
       return;
     }
 
@@ -809,16 +879,47 @@
     rankData = enforceBounds(Object.assign(defaultRankData(), localRankCandidate || {}));
 
     try {
+      // Kiểm tra danh sách Ban trước
+      const banDoc = await db.collection('banned').doc(user.uid).get();
+      if (banDoc.exists) {
+        const bData = banDoc.data() || {};
+        isCurrentUserBanned = true;
+        currentBanReason = bData.reason || 'Vi phạm quy tắc xếp hạng';
+        rankData = defaultRankData();
+        const zeroRankJson = JSON.stringify(rankData);
+        localStorage.setItem(ACTIVE_UID_KEY, user.uid);
+        localStorage.setItem(RANK_STORE_KEY, zeroRankJson);
+        localStorage.setItem(userRankKey(user.uid), zeroRankJson);
+        updateRankUI();
+        setSyncStatus('🚫 Tài khoản bị khóa BXH: ' + currentBanReason, '#f87171');
+        if (appBridge && typeof appBridge.notifyToast === 'function') {
+          appBridge.notifyToast('🚫 Tài khoản của bạn đã bị quản trị viên khóa quyền BXH (' + currentBanReason + ').', 'bad');
+        }
+        return;
+      }
+
       const doc = await db.collection('leaderboard').doc(user.uid).get();
       let cloudApp = null;
+      let wasResetByAdmin = false;
+
       if (doc.exists) {
         const cloud = doc.data();
-        const cloudRp = Math.max(0, Math.floor(Number(cloud.rp) || 0));
-        const cloudCorrect = Math.max(0, Math.floor(Number(cloud.correctCount) || 0));
-        const cloudMins = Math.max(0, Math.floor(Number(cloud.studyMinutes) || 0));
-        rankData.rp = Math.max(rankData.rp, cloudRp);
-        rankData.correctCount = Math.max(rankData.correctCount, cloudCorrect);
-        rankData.studyMinutes = Math.max(rankData.studyMinutes, cloudMins);
+        const cloudResetAt = Number(cloud.adminResetAt) || 0;
+        const ackResetAt = Number(localStorage.getItem(RESET_ACK_PREFIX + user.uid) || 0);
+
+        if (cloudResetAt > ackResetAt) {
+          // Admin vừa đặt lại điểm của tài khoản này -> xóa sạch điểm cục bộ về 0 RP
+          wasResetByAdmin = true;
+          localStorage.setItem(RESET_ACK_PREFIX + user.uid, String(cloudResetAt));
+          rankData = defaultRankData();
+        } else {
+          const cloudRp = Math.max(0, Math.floor(Number(cloud.rp) || 0));
+          const cloudCorrect = Math.max(0, Math.floor(Number(cloud.correctCount) || 0));
+          const cloudMins = Math.max(0, Math.floor(Number(cloud.studyMinutes) || 0));
+          rankData.rp = Math.max(rankData.rp, cloudRp);
+          rankData.correctCount = Math.max(rankData.correctCount, cloudCorrect);
+          rankData.studyMinutes = Math.max(rankData.studyMinutes, cloudMins);
+        }
         cloudApp = parseJsonSafe(cloud.appProgressJson);
       }
 
@@ -842,6 +943,9 @@
       }
 
       updateRankUI();
+      if (wasResetByAdmin && appBridge && typeof appBridge.notifyToast === 'function') {
+        appBridge.notifyToast('⚠️ Điểm xếp hạng của bạn đã được quản trị viên đặt lại về 0 RP.', 'info');
+      }
       needSync = true;
       await syncToCloud(true);
     } catch (err) {
@@ -860,18 +964,18 @@
     }
   });
 
-  // 7. HIỂN THỊ BẢNG XẾP HẠNG TOP 20 (ĐÃ CHỐNG XSS + HIỂN THỊ THÁCH ĐẤU TOP 3 >= 15.000 RP)
+  // 7. HIỂN THỊ BẢNG XẾP HẠNG TOP 20 (TỰ ĐỘNG LỌC BỎ ADMIN + THÁCH ĐẤU TOP 3 >= 15.000 RP)
   window.openLeaderboard = async function () {
     const modal = document.getElementById('leaderboard-modal');
     const listEl = document.getElementById('leaderboard-list');
     modal.style.display = 'flex';
     listEl.innerHTML = 'Đang tải bảng xếp hạng...';
 
-    if (needSync) await syncToCloud(false);
+    if (needSync && !isAdminUser() && !isCurrentUserBanned) await syncToCloud(false);
 
     const snapshot = await db.collection('leaderboard')
       .orderBy('rp', 'desc')
-      .limit(20)
+      .limit(25)
       .get();
 
     let html = '<div style="font-size:12px; color:#94a3b8; margin-bottom:10px; padding:6px 10px; border-radius:8px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25);">' +
@@ -880,6 +984,8 @@
     let foundMe = false;
 
     snapshot.forEach(function (doc) {
+      if (doc.id === ADMIN_UID) return; // Ẩn hoàn toàn Admin khỏi BXH
+      if (index > 20) return;
       const d = doc.data();
       const rpVal = Math.max(0, Math.floor(Number(d.rp) || 0));
       const isMe = currentUser && doc.id === currentUser.uid;
@@ -911,9 +1017,290 @@
       updateRankUI();
     }
 
-    listEl.innerHTML = snapshot.empty
+    listEl.innerHTML = index === 1
       ? 'Chưa có ai trên bảng xếp hạng. Hãy đăng nhập để mở bát!'
       : html;
+  };
+
+  // 8. BẢNG ĐIỀU KHIỂN QUẢN TRỊ VIÊN (ADMIN PANEL: XÓA ĐIỂM, BAN/GỠ BAN, BÁO LỖI CÂU HỎI)
+  let activeAdminTab = 'lb';
+  let adminLbCache = [];
+  let adminBanCache = [];
+  let adminReportsCache = [];
+
+  function adminNotify(msg, type) {
+    if (appBridge && typeof appBridge.notifyToast === 'function') {
+      appBridge.notifyToast(msg, type || 'info');
+    } else {
+      alert(msg);
+    }
+  }
+
+  function fmtAdminDate(ts) {
+    if (!ts) return 'Không rõ';
+    try {
+      const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
+      return d.toLocaleString('vi-VN');
+    } catch (e) {
+      return 'Không rõ';
+    }
+  }
+
+  window.openAdminPanel = async function () {
+    if (!isAdminUser()) {
+      adminNotify('Chỉ tài khoản quản trị viên mới có quyền truy cập.', 'bad');
+      return;
+    }
+    const modal = document.getElementById('admin-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    await switchAdminTab(activeAdminTab || 'lb');
+  };
+
+  window.closeAdminPanel = function () {
+    const modal = document.getElementById('admin-modal');
+    if (modal) modal.style.display = 'none';
+  };
+
+  window.switchAdminTab = async function (tab) {
+    if (!isAdminUser()) return;
+    activeAdminTab = tab;
+    ['lb', 'banned', 'reports'].forEach(function (t) {
+      const btn = document.getElementById('admin-tab-' + t);
+      if (btn) btn.classList.toggle('active', t === tab);
+    });
+    const body = document.getElementById('admin-panel-body');
+    if (!body) return;
+    body.innerHTML = '<div style="padding:16px; text-align:center; color:#94a3b8;">🔄 Đang tải dữ liệu từ Firestore...</div>';
+
+    try {
+      if (tab === 'lb') {
+        const snap = await db.collection('leaderboard').orderBy('rp', 'desc').limit(100).get();
+        adminLbCache = [];
+        snap.forEach(function (doc) {
+          adminLbCache.push(Object.assign({ uid: doc.id }, doc.data()));
+        });
+        renderAdminLeaderboard('');
+      } else if (tab === 'banned') {
+        const snap = await db.collection('banned').limit(100).get();
+        adminBanCache = [];
+        snap.forEach(function (doc) {
+          adminBanCache.push(Object.assign({ uid: doc.id }, doc.data()));
+        });
+        renderAdminBanned();
+      } else if (tab === 'reports') {
+        const snap = await db.collection('reports').limit(100).get();
+        adminReportsCache = [];
+        snap.forEach(function (doc) {
+          adminReportsCache.push(Object.assign({ id: doc.id }, doc.data()));
+        });
+        adminReportsCache.sort(function (a, b) {
+          const ta = a.createdAt && typeof a.createdAt.toMillis === 'function' ? a.createdAt.toMillis() : 0;
+          const tb = b.createdAt && typeof b.createdAt.toMillis === 'function' ? b.createdAt.toMillis() : 0;
+          return tb - ta;
+        });
+        renderAdminReports();
+      }
+    } catch (err) {
+      console.error('Lỗi tải Admin Panel:', err);
+      body.innerHTML = '<div style="padding:14px; border-radius:10px; background:rgba(239,68,68,0.16); color:#fca5a5;">⚠️ Không tải được dữ liệu: ' + escapeHtml(err.message || err) + '<br><small>Hãy kiểm tra bạn đã Publish file <code>firestore.rules</code> mới trên Firebase Console chưa.</small></div>';
+    }
+  };
+
+  window.filterAdminLeaderboard = function (val) {
+    renderAdminLeaderboard(val || '');
+  };
+
+  function renderAdminLeaderboard(query) {
+    const body = document.getElementById('admin-panel-body');
+    if (!body) return;
+    const q = String(query || '').trim().toLowerCase();
+    const list = adminLbCache.filter(function (u) {
+      if (!q) return true;
+      return String(u.name || '').toLowerCase().indexOf(q) !== -1 || String(u.uid || '').toLowerCase().indexOf(q) !== -1;
+    });
+
+    let html = '<div class="admin-toolbar">' +
+      '<input class="admin-search" type="text" value="' + escapeHtml(query || '') + '" oninput="filterAdminLeaderboard(this.value)" placeholder="Tìm theo tên hoặc UID người chơi...">' +
+      '<button type="button" class="admin-btn" onclick="switchAdminTab('lb')">🔄 Tải lại (' + adminLbCache.length + ')</button>' +
+      '</div>';
+
+    if (!list.length) {
+      html += '<div style="padding:14px; color:#94a3b8; text-align:center;">Không có người chơi nào phù hợp.</div>';
+      body.innerHTML = html;
+      return;
+    }
+
+    list.forEach(function (u, idx) {
+      const isSelfAdmin = u.uid === ADMIN_UID;
+      const safeUid = escapeHtml(u.uid);
+      const safeName = escapeHtml(u.name || 'Không tên');
+      const rpVal = Math.max(0, Math.floor(Number(u.rp) || 0));
+      html += '<div class="admin-card">' +
+        '<div class="admin-card-top">' +
+          '<div>' +
+            '<strong>#' + (idx + 1) + ' ' + safeName + '</strong> ' +
+            (isSelfAdmin ? '<span class="admin-badge">👑 Bản ghi cũ của Admin (nên xóa dòng)</span>' : '') +
+            '<div style="font-size:12px; color:#cbd5e1; margin-top:2px;">' + escapeHtml(u.tier || '🥉 Đồng') + ' • Đúng ' + (Number(u.correctCount) || 0) + ' câu • ' + (Number(u.studyMinutes) || 0) + ' phút</div>' +
+            '<div class="admin-uid">UID: ' + safeUid + '</div>' +
+          '</div>' +
+          '<strong style="color:#fbbf24; font-size:15px;">' + rpVal + ' RP</strong>' +
+        '</div>' +
+        '<div class="admin-actions">' +
+          (!isSelfAdmin ? '<button type="button" class="admin-btn warn" data-uid="' + safeUid + '" data-name="' + safeName + '" onclick="adminResetUserScore(this.dataset.uid, this.dataset.name)">🧹 Xóa điểm về 0 RP</button>' : '') +
+          '<button type="button" class="admin-btn" data-uid="' + safeUid + '" data-name="' + safeName + '" onclick="adminDeleteLeaderboardRow(this.dataset.uid, this.dataset.name)">🗑️ Xóa khỏi BXH</button>' +
+          (!isSelfAdmin ? '<button type="button" class="admin-btn danger" data-uid="' + safeUid + '" data-name="' + safeName + '" onclick="adminBanUserPrompt(this.dataset.uid, this.dataset.name)">🔨 Ban tài khoản</button>' : '') +
+        '</div>' +
+      '</div>';
+    });
+
+    body.innerHTML = html;
+  }
+
+  function renderAdminBanned() {
+    const body = document.getElementById('admin-panel-body');
+    if (!body) return;
+    let html = '<div class="admin-toolbar">' +
+      '<div style="flex:1; font-size:13px; color:#cbd5e1; align-self:center;">Tổng số tài khoản đang bị khóa BXH: <strong>' + adminBanCache.length + '</strong></div>' +
+      '<button type="button" class="admin-btn" onclick="switchAdminTab('banned')">🔄 Tải lại</button>' +
+      '</div>';
+
+    if (!adminBanCache.length) {
+      html += '<div style="padding:16px; color:#94a3b8; text-align:center;">Hiện chưa có tài khoản nào bị Ban.</div>';
+      body.innerHTML = html;
+      return;
+    }
+
+    adminBanCache.forEach(function (b) {
+      const safeUid = escapeHtml(b.uid);
+      const safeName = escapeHtml(b.name || 'Không rõ tên');
+      html += '<div class="admin-card">' +
+        '<div class="admin-card-top">' +
+          '<div>' +
+            '<strong>🚫 ' + safeName + '</strong>' +
+            '<div style="font-size:12.5px; color:#fca5a5; margin-top:3px;">Lý do: ' + escapeHtml(b.reason || 'Vi phạm quy tắc') + '</div>' +
+            '<div class="admin-uid">UID: ' + safeUid + ' • Ngày khóa: ' + escapeHtml(fmtAdminDate(b.bannedAt || b.bannedAtMs)) + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="admin-actions">' +
+          '<button type="button" class="admin-btn ok" data-uid="' + safeUid + '" data-name="' + safeName + '" onclick="adminUnbanUser(this.dataset.uid, this.dataset.name)">🔓 Gỡ Ban</button>' +
+        '</div>' +
+      '</div>';
+    });
+
+    body.innerHTML = html;
+  }
+
+  function renderAdminReports() {
+    const body = document.getElementById('admin-panel-body');
+    if (!body) return;
+    let html = '<div class="admin-toolbar">' +
+      '<div style="flex:1; font-size:13px; color:#cbd5e1; align-self:center;">Báo lỗi câu hỏi chưa xử lý: <strong>' + adminReportsCache.length + '</strong></div>' +
+      '<button type="button" class="admin-btn" onclick="switchAdminTab('reports')">🔄 Tải lại</button>' +
+      '</div>';
+
+    if (!adminReportsCache.length) {
+      html += '<div style="padding:16px; color:#94a3b8; text-align:center;">🎉 Tuyệt vời! Không có báo lỗi câu hỏi nào tồn đọng.</div>';
+      body.innerHTML = html;
+      return;
+    }
+
+    adminReportsCache.forEach(function (r) {
+      const safeId = escapeHtml(r.id);
+      html += '<div class="admin-card">' +
+        '<div class="admin-card-top">' +
+          '<div>' +
+            '<strong style="color:#fbbf24;">Chương ' + (Number(r.ch) || 0) + ' • Câu ' + (Number(r.n) || 0) + ' (' + escapeHtml(r.qid || '') + ')</strong> ' +
+            '<span class="ban-badge">' + escapeHtml(r.reason || 'Báo lỗi') + '</span>' +
+          '</div>' +
+          '<small style="color:#94a3b8;">' + escapeHtml(fmtAdminDate(r.createdAt)) + '</small>' +
+        '</div>' +
+        '<div style="font-size:13px; color:#f8fafc; margin-top:6px; line-height:1.45;">' + escapeHtml(r.questionText || '') + '</div>' +
+        (r.currentAnswer ? '<div style="font-size:12px; color:#93c5fd; margin-top:4px;">Đáp án web hiện tại: ' + escapeHtml(r.currentAnswer) + '</div>' : '') +
+        (r.note ? '<div style="font-size:12px; color:#fde68a; margin-top:4px; background:rgba(245,158,11,0.1); padding:5px 8px; border-radius:6px;">Ghi chú người gửi: ' + escapeHtml(r.note) + '</div>' : '') +
+        '<div class="admin-uid" style="margin-top:5px;">Người báo: ' + escapeHtml(r.reporterName || 'Khách') + ' (' + escapeHtml(r.reporterUid || 'guest') + ')</div>' +
+        '<div class="admin-actions">' +
+          '<button type="button" class="admin-btn ok" data-id="' + safeId + '" onclick="adminDeleteReport(this.dataset.id)">✔ Đã xử lý & Xóa báo cáo</button>' +
+        '</div>' +
+      '</div>';
+    });
+
+    body.innerHTML = html;
+  }
+
+  window.adminResetUserScore = async function (uid, name) {
+    if (!isAdminUser() || !uid) return;
+    if (!window.confirm('Đặt lại toàn bộ điểm RP, số câu đúng và thời gian học của "' + name + '" về 0?\n(Lần sau người này mở web, điểm lưu trên máy họ cũng sẽ tự reset về 0 RP)')) return;
+    try {
+      await db.collection('leaderboard').doc(uid).set({
+        rp: 0,
+        correctCount: 0,
+        studyMinutes: 0,
+        tier: '🥉 Đồng',
+        adminResetAt: Date.now(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      adminNotify('✔ Đã đặt lại điểm của ' + name + ' về 0 RP.', 'ok');
+      await switchAdminTab('lb');
+    } catch (err) {
+      adminNotify('Lỗi xóa điểm: ' + (err.message || err), 'bad');
+    }
+  };
+
+  window.adminDeleteLeaderboardRow = async function (uid, name) {
+    if (!isAdminUser() || !uid) return;
+    if (!window.confirm('Xóa hẳn dòng xếp hạng của "' + name + '" khỏi BXH?')) return;
+    try {
+      await db.collection('leaderboard').doc(uid).delete();
+      adminNotify('✔ Đã xóa ' + name + ' khỏi BXH.', 'ok');
+      await switchAdminTab('lb');
+    } catch (err) {
+      adminNotify('Lỗi xóa dòng BXH: ' + (err.message || err), 'bad');
+    }
+  };
+
+  window.adminBanUserPrompt = async function (uid, name) {
+    if (!isAdminUser() || !uid) return;
+    const reason = window.prompt('Nhập lý do Ban tài khoản "' + name + '" khỏi BXH:', 'Gian lận điểm / Tên hiển thị vi phạm');
+    if (reason === null) return;
+    try {
+      await db.collection('banned').doc(uid).set({
+        uid: uid,
+        name: String(name || 'Không tên').slice(0, 40),
+        reason: String(reason || 'Vi phạm quy tắc xếp hạng').slice(0, 140),
+        bannedBy: ADMIN_UID,
+        bannedAtMs: Date.now(),
+        bannedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await db.collection('leaderboard').doc(uid).delete();
+      adminNotify('🔨 Đã Ban và xóa ' + name + ' khỏi BXH.', 'ok');
+      await switchAdminTab('lb');
+    } catch (err) {
+      adminNotify('Lỗi Ban tài khoản: ' + (err.message || err), 'bad');
+    }
+  };
+
+  window.adminUnbanUser = async function (uid, name) {
+    if (!isAdminUser() || !uid) return;
+    if (!window.confirm('Gỡ Ban cho tài khoản "' + name + '" để họ có thể tham gia lại BXH?')) return;
+    try {
+      await db.collection('banned').doc(uid).delete();
+      adminNotify('🔓 Đã gỡ Ban cho ' + name + '.', 'ok');
+      await switchAdminTab('banned');
+    } catch (err) {
+      adminNotify('Lỗi gỡ Ban: ' + (err.message || err), 'bad');
+    }
+  };
+
+  window.adminDeleteReport = async function (reportId) {
+    if (!isAdminUser() || !reportId) return;
+    try {
+      await db.collection('reports').doc(reportId).delete();
+      adminNotify('✔ Đã xóa báo lỗi câu hỏi.', 'ok');
+      await switchAdminTab('reports');
+    } catch (err) {
+      adminNotify('Lỗi xóa báo cáo: ' + (err.message || err), 'bad');
+    }
   };
 
   updateRankUI();

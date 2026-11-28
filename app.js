@@ -736,6 +736,11 @@
       var el = document.getElementById(ids[i]);
       if (el && !el.hidden) return true;
     }
+    var flexIds = ['leaderboard-modal', 'auth-modal', 'admin-modal'];
+    for (var j = 0; j < flexIds.length; j++) {
+      var fel = document.getElementById(flexIds[j]);
+      if (fel && fel.style.display && fel.style.display !== 'none') return true;
+    }
     return false;
   }
 

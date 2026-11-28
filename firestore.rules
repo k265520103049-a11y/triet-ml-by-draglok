@@ -1,12 +1,23 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Kiểm tra quyền Quản trị viên duy nhất theo UID
+    function isAdmin() {
+      return request.auth != null && request.auth.uid == "np7u77LPOxel3f1A4CLDn70WSX22";
+    }
+
+    // Kiểm tra tài khoản có đang nằm trong danh sách bị Ban hay không
+    function isBanned(uid) {
+      return exists(/databases/$(database)/documents/banned/$(uid));
+    }
+
     match /leaderboard/{userId} {
       // Mọi người đều xem được BXH
       allow read: if true;
 
-      // Chặn xóa document từ client (chỉ Admin xóa được trong Firebase Console)
-      allow delete: if false;
+      // Chỉ Admin mới được xóa trực tiếp một người khỏi BXH
+      allow delete: if isAdmin();
 
       function isValidDoc(data) {
         return data.keys().hasAll(['name', 'rp', 'correctCount', 'studyMinutes', 'tier'])
@@ -24,47 +35,56 @@ service cloud.firestore {
           && data.studyMinutes is int
           && data.studyMinutes >= 0
           && data.studyMinutes <= 10000
-          // Ràng buộc toán học: tối đa 10 RP/câu + trung bình 3 RP chuỗi 5 + 2 RP/phút
           && data.rp <= (data.correctCount * 13 + data.studyMinutes * 2)
           && (!('appProgressJson' in data) || (data.appProgressJson is string && data.appProgressJson.size() <= 350000));
       }
 
-      // Tạo tài khoản mới (cho phép mang tối đa 1500 RP từ chế độ Khách sang)
+      // Chặn Admin ghi điểm lên BXH và chặn tài khoản đã bị Ban
       allow create: if request.auth != null
         && request.auth.uid == userId
+        && !isAdmin()
+        && !isBanned(userId)
         && isValidDoc(request.resource.data)
         && request.resource.data.rp <= 1500
         && request.resource.data.correctCount <= 120
         && request.resource.data.studyMinutes <= 180;
 
-      // Cập nhật tiến độ: kiểm tra chênh lệch điểm & tốc độ làm bài theo thời gian thực
-      allow update: if request.auth != null
+      // Admin được phép reset điểm bất kỳ ai; người chơi thường phải tuân thủ quy tắc chống gian lận
+      allow update: if isAdmin() || (
+        request.auth != null
         && request.auth.uid == userId
+        && !isAdmin()
+        && !isBanned(userId)
         && isValidDoc(request.resource.data)
         && request.resource.data.correctCount >= resource.data.correctCount
         && request.resource.data.studyMinutes >= resource.data.studyMinutes
         && request.resource.data.rp >= resource.data.rp
-        // Chênh lệch RP không được vượt quá công thức của số câu & số phút tăng thêm
         && (request.resource.data.rp - resource.data.rp) <= (
              (request.resource.data.correctCount - resource.data.correctCount) * 13
              + (request.resource.data.studyMinutes - resource.data.studyMinutes) * 2
            )
-        // Giới hạn tối đa mỗi lần đồng bộ (tránh bơm cục lớn)
         && (request.resource.data.correctCount - resource.data.correctCount) <= 45
         && (request.resource.data.rp - resource.data.rp) <= 600
-        // Chống spam tốc độ cao: nếu tăng > 3 câu đúng, bắt buộc tối thiểu 2 giây/câu kể từ lần sync trước
         && (
              !('updatedAt' in resource.data)
              || !(resource.data.updatedAt is timestamp)
              || (request.resource.data.correctCount - resource.data.correctCount) <= 3
              || (request.time.toMillis() - resource.data.updatedAt.toMillis())
                 >= (request.resource.data.correctCount - resource.data.correctCount) * 2000
-           );
+           )
+      );
     }
 
-    // Phản hồi báo lỗi câu hỏi / đáp án từ người học
+    // Danh sách tài khoản bị Admin khóa khỏi BXH
+    match /banned/{userId} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == userId);
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Phản hồi báo lỗi câu hỏi / đáp án từ người học (chỉ Admin được đọc và xóa)
     match /reports/{reportId} {
-      allow read, update, delete: if false;
+      allow read, delete: if isAdmin();
+      allow update: if false;
       allow create: if request.resource.data.keys().hasAll([
           'qid', 'ch', 'n', 'questionText', 'currentAnswer', 'reason', 'note', 'reporterUid', 'reporterName', 'appVersion'
         ])

@@ -44,6 +44,9 @@
         <button id="btn-open-changelog" onclick="openChangelogModal()" style="position:relative; padding:6px 11px; border:1px solid rgba(255,255,255,0.2); border-radius:6px; background:rgba(30,41,59,0.95); color:#f8fafc; font-weight:bold; cursor:pointer;">
           🆕 Cập nhật<span id="changelog-dot" style="display:none; position:absolute; top:-4px; right:-4px; width:10px; height:10px; border-radius:50%; background:#ef4444; box-shadow:0 0 0 2px #0f172a;"></span>
         </button>
+        <button id="btn-open-admin" onclick="openAdminPanel()" style="display:none; padding:6px 11px; border:1px solid rgba(251,191,36,0.55); border-radius:6px; background:linear-gradient(90deg,#b45309,#991b1b); color:#fef3c7; font-weight:bold; cursor:pointer;">
+          🛡️ Admin
+        </button>
         <button id="btn-open-leaderboard" onclick="openLeaderboard()" style="padding:6px 12px; border:none; border-radius:6px; background:#f59e0b; color:#000; font-weight:bold; cursor:pointer;">
           🏆 BXH
         </button>
@@ -220,6 +223,25 @@
     </div>
   </div>
 
+  <!-- Popup Bảng điều khiển Quản trị viên (Chỉ mở được với UID Admin) -->
+  <div id="admin-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:10005; align-items:center; justify-content:center; padding:12px;">
+    <div style="background:#1e293b; color:#f8fafc; width:100%; max-width:680px; border-radius:14px; padding:18px; max-height:86vh; overflow-y:auto; border:1px solid rgba(251,191,36,0.35); box-shadow:0 16px 40px rgba(0,0,0,0.65);">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;">
+        <div>
+          <h3 style="margin:0; font-size:18px; color:#fbbf24;">🛡️ Bảng điều khiển Quản trị viên</h3>
+          <div style="font-size:12px; color:#94a3b8; margin-top:2px;">Tài khoản Admin tự động ẩn khỏi BXH • Xác thực bằng Firebase Rules</div>
+        </div>
+        <button onclick="closeAdminPanel()" style="background:none; border:none; color:#cbd5e1; font-size:22px; cursor:pointer; padding:2px 6px;">✕</button>
+      </div>
+      <div class="admin-tabs">
+        <button type="button" class="admin-tab-btn active" id="admin-tab-lb" onclick="switchAdminTab('lb')">🏆 Người chơi BXH</button>
+        <button type="button" class="admin-tab-btn" id="admin-tab-banned" onclick="switchAdminTab('banned')">🚫 Đã Ban</button>
+        <button type="button" class="admin-tab-btn" id="admin-tab-reports" onclick="switchAdminTab('reports')">🚩 Báo lỗi câu hỏi</button>
+      </div>
+      <div id="admin-panel-body">Đang tải dữ liệu quản trị...</div>
+    </div>
+  </div>
+
   <script src="questions.js"></script>
   <script src="theory.js"></script>
   <script src="explain.js"></script>
@@ -249,6 +271,8 @@
 
       function shouldAutoOpen() {
         try {
+          if (window.__trietSkipSupportAuto) return false;
+          if (localStorage.getItem('mln-active-uid') === 'np7u77LPOxel3f1A4CLDn70WSX22') return false;
           var until = Number(localStorage.getItem(HIDE_KEY) || 0);
           return !until || Date.now() >= until;
         } catch (e) {
